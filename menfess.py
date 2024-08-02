@@ -25,16 +25,16 @@ load_dotenv()
 
 
 
-token = os.getenv("BOT_TOKEN")
-ch = os.getenv("CHANNEL")
-link = os.getenv("LINK")
+token = os.getenv("6785563845:AAH-WSJ_KNEjC3QQECkNdRXvqy1pXejP9Ek")
+ch = os.getenv("-1002236001760")
+link = os.getenv("t.me/BestieVirtual")
 admin = json.loads(os.getenv("ADMIN"))
 trigger = json.loads(os.getenv("TAG"))
 delay = os.getenv("DELAY")
 mulai = '''
-Selamat Datang Di *Garz Menfess*
+Selamat Datang Di *Ferdi Menfess*
 
-kamu bebas mengirim menfess pada channel garzmenfess, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini :
+kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini :
 	
 *{}*
 
