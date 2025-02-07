@@ -9,156 +9,130 @@
 # github.com/GarzProject/MenfessTelegramBot
 ###########################################
 
-try:
-	import telebot
-	import time
-	import os
-	import json
-	from dotenv import load_dotenv
-	from telebot import types
-except:
-	print("error! install dulu pytelegrambotapi dengan cara 'pip install pytelegrambotapi'")
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import time
+import os
+import json
+from dotenv import load_dotenv
+import asyncio
 
 load_dotenv()
 
+# Bot configuration
+api_id = "your_api_id"
+api_hash = "your_api_hash" 
+bot_token = os.getenv("6785563845:AAH-WSJ_KNEjC3QQECkNdRXvqy1pXejP9Ek")
+channel_id = os.getenv("-1002236001760")
+channel_link = os.getenv("t.me/BestieVirtual")
+admin_list = json.loads(os.getenv("ADMIN"))
+trigger_tags = json.loads(os.getenv("TAG"))
+delay_time = int(os.getenv("DELAY"))
 
+# Initialize bot
+app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
+# Store cooldown users
+cooldown_users = []
 
-
-token = os.getenv("6785563845:AAH-WSJ_KNEjC3QQECkNdRXvqy1pXejP9Ek")
-ch = os.getenv("-1002236001760")
-link = os.getenv("t.me/BestieVirtual")
-admin = json.loads(os.getenv("ADMIN"))
-trigger = json.loads(os.getenv("TAG"))
-delay = os.getenv("DELAY")
-mulai = '''
+# Welcome message
+start_message = '''
 Selamat Datang Di *Ferdi Menfess*
 
-kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini :
-	
-*{}*
+kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini:
 
-''' # edit pesan mulai ubah sesuka hati
+{}
+'''
 
+async def add_to_cooldown(user_id):
+    cooldown_users.append(user_id)
+    await asyncio.sleep(delay_time)
+    cooldown_users.remove(user_id)
 
-# pake markdown? ubah jadi >> telebot.TeleBot(token, parse_mode="markdown")
-bot = telebot.TeleBot(token)
-kirim = bot.send_message 
-kopi = bot.copy_message 
-lanjut = bot.register_next_step_handler 
-ma = types.InlineKeyboardMarkup
-bb = types.InlineKeyboardButton
+def check_trigger(text):
+    for word in text.split():
+        if any(tag in word for tag in trigger_tags):
+            return True
+    return False
 
+@app.on_message(filters.command(["start", "broadcast", "ping"]) & filters.private)
+async def handle_commands(client, message):
+    user_id = message.from_user.id
+    
+    # Store user ID for broadcast
+    with open("member.db", "a+") as file:
+        file.seek(0)
+        if str(user_id) not in file.read().splitlines():
+            file.write(f"{user_id}\n")
+    
+    if message.text.startswith("/start"):
+        tags = '\n'.join(trigger_tags)
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("Channel Menfess", url=channel_link)
+        ]])
+        await message.reply_text(start_message.format(tags), 
+                               reply_markup=keyboard,
+                               parse_mode="markdown")
+    
+    elif message.text.startswith("/ping"):
+        total_users = len(open("member.db", "r").readlines())
+        await message.reply_text(f"Bot Aktif!!!!\nTotal Pengguna Bot: {total_users}")
+    
+    elif message.text.startswith("/broadcast"):
+        if user_id in admin_list:
+            await message.reply_text("Masukan Pesan Broadcast:")
+            @app.on_message(filters.private & ~filters.command)
+            async def broadcast_message(client, broadcast_msg):
+                if broadcast_msg.from_user.id == user_id:
+                    with open("member.db", "r") as file:
+                        users = file.read().splitlines()
+                        for user in users:
+                            try:
+                                await broadcast_msg.copy(int(user))
+                                await asyncio.sleep(0.5)
+                            except Exception as e:
+                                print(f"Failed to send to {user}: {str(e)}")
+                    await message.reply_text("Pesan broadcast berhasil dikirim.")
 
+@app.on_message(filters.private & filters.text & ~filters.command)
+async def handle_menfess(client, message):
+    user_id = message.from_user.id
+    text = message.text
+    words = len(text.split())
+    
+    if user_id in cooldown_users:
+        await message.reply_text(f"Gagal mengirim!!\n\nKamu baru saja mengirim menfess, beri jarak {delay_time} detik untuk memposting kembali!")
+        return
+        
+    if words < 3:
+        await message.reply_text("Gagal mengirim!!\n\nTidak boleh kurang dari 3 kata!!")
+        return
+        
+    if not check_trigger(text):
+        tags = '\n'.join(trigger_tags)
+        await message.reply_text(f"Gagal mengirim!!\n\nHarap gunakan tag dibawah ini:\n{tags}")
+        return
+        
+    try:
+        sent = await app.send_message(channel_id, text)
+        post_link = f"{channel_link}/{sent.id}"
+        comment_link = f"{post_link}?comment={sent.id}"
+        
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Cek Postingan", url=post_link),
+                InlineKeyboardButton("Cek Komentar", url=comment_link)
+            ]
+        ])
+        
+        await message.reply_text("*Menfess Berhasil Diposting!!*",
+                               parse_mode="markdown",
+                               reply_markup=keyboard)
+                               
+        await add_to_cooldown(user_id)
+        
+    except Exception as e:
+        await message.reply_text("Gagal mengirim menfess. Silakan coba lagi.")
 
-apaantuh = []
-def diam(id):
-	data = int(id)
-	apaantuh.append(data)
-	time.sleep(delay)
-	apaantuh.remove(data)
-	
-	
-# handling pesan command cuyy kembangin sesuka hati mu
-@bot.message_handler(commands=["start", "broadcast", "ping"], chat_types=["private"])
-def garz(message):
-	id = message.chat.id 
-	teks = message.text 
-	
-	# kebutuhan broadcast
-	with open("member.db", "a+") as file:
-		file.seek(0)
-		value = str(id)
-		lines = file.read().splitlines()
-		if value in lines:
-			pass
-		else:
-			file.write(value + "\n")
-			
-	# command start
-	if "/start" in teks:
-		nggih = '\n'.join(map(str, trigger))
-		yamete = ma(row_width=2)
-		rawr = bb(text="Channel Menfess", url=link)
-		yamete.add(rawr)
-		kirim(id, mulai.format(nggih), parse_mode="markdown", reply_markup=yamete)
-	# ping
-	elif "/ping" in teks:
-		total = len(open("member.db", "r").readlines())
-		pong = f"Bot Aktif !!!!\nTotal Pengguna Bot : {total}"
-		kirim(id, pong)
-	# command broadcast untuk admin
-	elif "/broadcast" in teks:
-		if id in admin:
-			anjim = kirim(id, "Masukan Pesan Broadcast : ")
-			lanjut(anjim, broadcast)
-
-
-
-# handling teks menfess cuy
-@bot.message_handler(content_types=["text"])
-def menfessin(message):
-	id = message.chat.id
-	teks = message.text
-	ah = tegar(teks)
-	ih = len(teks.split(" "))
-	if id in apaantuh:
-		kirim(id, f"gagal mengirim!!\n\nkamu baru saja mengirim menfess, beri jarak {delay} detik untuk memposting kembali!")
-	elif ih < 3:
-		kirim(id, "gagal mengirim!!\n\ntidak boleh kurang dari 3 kata!!")
-	elif ah == False:
-		tag = '\n'.join(map(str, trigger))
-		kirim(id, f"gagal mengirim!!\n\nharap gunakan tag dibawah ini : \n{tag}")
-	elif ah == True:
-		pesan = kirim(ch, teks)
-		links = link + "/" + str(pesan.id)
-		linksk = links + "?comment=" + str(pesan.id)
-		kirim(id, f"*Menfess Berhasil Diposting!!*", parse_mode="markdown", reply_markup=awikwokbanget(links, linksk))
-		diam(id)
-		
-# aninuneno tcih mendoksai
-def tegar(data):
-	for x in data.split(" "):
-		yow = x
-		for i in trigger:
-			yaw = i
-			if yaw in yow:
-				data = 1
-	if data == 1:
-		return True
-	else:
-		return False
-
-def broadcast(message):
-	id = message.chat.id 
-	pesans = message.message_id
-	with open("member.db", "r") as file:
-				lines = file.read().splitlines()
-				for x in lines:
-					try:
-						yy = int(x)
-						kopi(yy, id, pesans)
-					except:
-						print(f"gagal mengirim pesan kepada pengguna *{x}*\nmungkin bot telah diblok.")
-	kirim(id, "Pesan broadcast berhasil dikirim.")
-
-
-
-
-def awikwokbanget(cek, cekin):
-	miaw = ma(row_width=2)
-	b1 = bb(text="Cek Postingan", url=cek)
-	b2 = bb(text="Cek Komentar", url=cekin)
-	miaw.add(b1, b2)
-	return miaw
 print("\n\nBOT TELAH AKTIF!!! @GARZPROJECT")
-bot.infinity_polling()
-
-
-
-
-
-
-
-
-
+app.run()
