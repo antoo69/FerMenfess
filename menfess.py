@@ -1,14 +1,3 @@
-###########################################
-# Garz Menfess Telegram Bot
-# Tegar Prayuda | Hak Cipta
-# Tolong Hargai Pembuat Script Ini
-# Recode ? Cantumin Source
-# join t.me/GarzProject
-# contact : t.me/tegarprayuda
-# Jual Source  Code Menfess Bot Full Fitur 
-# github.com/GarzProject/MenfessTelegramBot
-###########################################
-
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import time
@@ -23,11 +12,16 @@ load_dotenv()
 api_id = "your_api_id"
 api_hash = "your_api_hash" 
 bot_token = os.getenv("6785563845:AAH-WSJ_KNEjC3QQECkNdRXvqy1pXejP9Ek")
-channel_id = os.getenv("-1002236001760")
-channel_link = os.getenv("t.me/BestieVirtual")
+group1_id = os.getenv("GROUP1_ID")  # Group 1
+group2_id = os.getenv("GROUP2_ID")  # Group 2
+group3_id = os.getenv("GROUP3_ID")  # Group 3
+group1_link = os.getenv("GROUP1_LINK")
+group2_link = os.getenv("GROUP2_LINK")
+group3_link = os.getenv("GROUP3_LINK")
 admin_list = json.loads(os.getenv("ADMIN"))
 trigger_tags = json.loads(os.getenv("TAG"))
 delay_time = int(os.getenv("DELAY"))
+owner_id = int(os.getenv("OWNER_ID"))  # Tambahkan owner ID di .env file
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
@@ -55,9 +49,11 @@ def check_trigger(text):
             return True
     return False
 
-@app.on_message(filters.command(["start", "broadcast", "ping"]) & filters.private)
-async def handle_commands(client, message):
+@app.on_message(filters.command("start") & filters.private)
+async def start_command(client, message):
     user_id = message.from_user.id
+    tags = '\n'.join(trigger_tags)
+    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Channel Menfess", url=group1_link)]])
     
     # Store user ID for broadcast
     with open("member.db", "a+") as file:
@@ -65,34 +61,41 @@ async def handle_commands(client, message):
         if str(user_id) not in file.read().splitlines():
             file.write(f"{user_id}\n")
     
-    if message.text.startswith("/start"):
-        tags = '\n'.join(trigger_tags)
-        keyboard = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Channel Menfess", url=channel_link)
-        ]])
-        await message.reply_text(start_message.format(tags), 
-                               reply_markup=keyboard,
-                               parse_mode="markdown")
-    
-    elif message.text.startswith("/ping"):
+    await message.reply_text(start_message.format(tags), 
+                             reply_markup=keyboard,
+                             parse_mode="markdown")
+
+# Perintah Ping - hanya untuk owner
+@app.on_message(filters.command("ping") & filters.private)
+async def ping_command(client, message):
+    user_id = message.from_user.id
+    if user_id == owner_id:  # Hanya owner yang bisa menggunakan
         total_users = len(open("member.db", "r").readlines())
         await message.reply_text(f"Bot Aktif!!!!\nTotal Pengguna Bot: {total_users}")
-    
-    elif message.text.startswith("/broadcast"):
-        if user_id in admin_list:
-            await message.reply_text("Masukan Pesan Broadcast:")
-            @app.on_message(filters.private & ~filters.command)
-            async def broadcast_message(client, broadcast_msg):
-                if broadcast_msg.from_user.id == user_id:
-                    with open("member.db", "r") as file:
-                        users = file.read().splitlines()
-                        for user in users:
-                            try:
-                                await broadcast_msg.copy(int(user))
-                                await asyncio.sleep(0.5)
-                            except Exception as e:
-                                print(f"Failed to send to {user}: {str(e)}")
-                    await message.reply_text("Pesan broadcast berhasil dikirim.")
+    else:
+        await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
+
+# Perintah Broadcast - hanya untuk owner
+@app.on_message(filters.command("broadcast") & filters.private)
+async def broadcast_command(client, message):
+    user_id = message.from_user.id
+    if user_id == owner_id:  # Hanya owner yang bisa menggunakan
+        await message.reply_text("Masukkan pesan broadcast:")
+        
+        @app.on_message(filters.private & ~filters.command)
+        async def broadcast_message(client, broadcast_msg):
+            if broadcast_msg.from_user.id == owner_id:  # Verifikasi ulang jika owner
+                with open("member.db", "r") as file:
+                    users = file.read().splitlines()
+                    for user in users:
+                        try:
+                            await broadcast_msg.copy(int(user))
+                            await asyncio.sleep(0.5)
+                        except Exception as e:
+                            print(f"Gagal mengirim ke {user}: {str(e)}")
+                await message.reply_text("Pesan broadcast berhasil dikirim.")
+    else:
+        await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
 
 @app.on_message(filters.private & filters.text & ~filters.command)
 async def handle_menfess(client, message):
@@ -112,27 +115,48 @@ async def handle_menfess(client, message):
         tags = '\n'.join(trigger_tags)
         await message.reply_text(f"Gagal mengirim!!\n\nHarap gunakan tag dibawah ini:\n{tags}")
         return
-        
+    
+    # Pilihan grup untuk menfess
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Group 1", callback_data="group1"),
+         InlineKeyboardButton("Group 2", callback_data="group2"),
+         InlineKeyboardButton("Group 3", callback_data="group3")]
+    ])
+    
+    await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
+
+@app.on_callback_query(filters.regex(r"group[1-3]"))
+async def on_group_selection(client, callback_query):
+    user_id = callback_query.from_user.id
+    selected_group = callback_query.data
+    message = callback_query.message
+    
+    group_id = {
+        "group1": group1_id,
+        "group2": group2_id,
+        "group3": group3_id
+    }[selected_group]
+    
     try:
-        sent = await app.send_message(channel_id, text)
-        post_link = f"{channel_link}/{sent.id}"
-        comment_link = f"{post_link}?comment={sent.id}"
+        sent = await app.send_message(group_id, message.reply_to_message.text)
+        group_links = {
+            "group1": group1_link,
+            "group2": group2_link,
+            "group3": group3_link
+        }
+        post_link = f"{group_links[selected_group]}/{sent.id}"
         
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("Cek Postingan", url=post_link),
-                InlineKeyboardButton("Cek Komentar", url=comment_link)
-            ]
+            [InlineKeyboardButton("Cek Postingan", url=post_link)]
         ])
         
-        await message.reply_text("*Menfess Berhasil Diposting!!*",
-                               parse_mode="markdown",
-                               reply_markup=keyboard)
-                               
+        await callback_query.message.reply_text("*Menfess Berhasil Diposting!!*",
+                                                parse_mode="markdown",
+                                                reply_markup=keyboard)
         await add_to_cooldown(user_id)
         
     except Exception as e:
-        await message.reply_text("Gagal mengirim menfess. Silakan coba lagi.")
+        await callback_query.message.reply_text("Gagal mengirim menfess. Silakan coba lagi.")
 
 print("\n\nBOT TELAH AKTIF!!! @GARZPROJECT")
 app.run()
