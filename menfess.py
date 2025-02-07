@@ -1,6 +1,5 @@
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import time
 import os
 import json
 from dotenv import load_dotenv
@@ -8,20 +7,20 @@ import asyncio
 
 load_dotenv()
 
-# Bot configuration
-api_id = "your_api_id"
-api_hash = "your_api_hash" 
-bot_token = os.getenv("6785563845:AAH-WSJ_KNEjC3QQECkNdRXvqy1pXejP9Ek")
-group1_id = os.getenv("GROUP1_ID")  # Group 1
-group2_id = os.getenv("GROUP2_ID")  # Group 2
-group3_id = os.getenv("GROUP3_ID")  # Group 3
-group1_link = os.getenv("GROUP1_LINK")
-group2_link = os.getenv("GROUP2_LINK")
-group3_link = os.getenv("GROUP3_LINK")
-admin_list = json.loads(os.getenv("ADMIN"))
-trigger_tags = json.loads(os.getenv("TAG"))
-delay_time = int(os.getenv("DELAY"))
-owner_id = int(os.getenv("OWNER_ID"))  # Tambahkan owner ID di .env file
+# Bot configuration (semua diambil dari file .env)
+api_id = os.getenv("API_ID")
+api_hash = os.getenv("API_HASH")
+bot_token = os.getenv("BOT_TOKEN")
+group1_id = os.getenv("GROUP1_ID")  # Group 1 ID
+group2_id = os.getenv("GROUP2_ID")  # Group 2 ID
+group3_id = os.getenv("GROUP3_ID")  # Group 3 ID
+group1_link = os.getenv("GROUP1_LINK")  # Group 1 Link
+group2_link = os.getenv("GROUP2_LINK")  # Group 2 Link
+group3_link = os.getenv("GROUP3_LINK")  # Group 3 Link
+admin_list = json.loads(os.getenv("ADMIN"))  # Admin list
+trigger_tags = json.loads(os.getenv("TAG"))  # Trigger tags
+delay_time = int(os.getenv("DELAY"))  # Delay time
+owner_id = int(os.getenv("OWNER_ID"))  # Owner ID
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
