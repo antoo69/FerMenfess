@@ -96,6 +96,15 @@ async def add_group_command(client, message):
         try:
             chat = await app.get_chat(group_username)
             print(f"Chat type: {chat.type}")  # Debug print
+            
+            # Check if bot is member of the group
+            try:
+                await app.get_chat_member(chat.id, "me")
+            except Exception as e:
+                await message.reply_text("Bot belum menjadi member grup. Tambahkan bot ke grup terlebih dahulu.")
+                print(f"Bot not member error: {str(e)}")
+                return
+                
         except Exception as e:
             await message.reply_text("Gagal mendapatkan info grup. Pastikan:\n- Username/link grup benar\n- Bot sudah dimasukkan ke dalam grup\n- Bot sudah menjadi admin di grup")
             print(f"Error getting chat: {str(e)}")  # Debug print
@@ -109,11 +118,26 @@ async def add_group_command(client, message):
         # Check if bot is admin
         try:
             bot_member = await app.get_chat_member(chat.id, "me")
-            if not bot_member.status == "administrator":
+            if bot_member.status != "administrator":
                 await message.reply_text("Bot harus menjadi admin di grup/channel tersebut!")
+                print(f"Bot status: {bot_member.status}")  # Debug print
                 return
+                
+            # Check bot permissions
+            required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
+            missing_permissions = []
+            
+            for perm in required_permissions:
+                if not getattr(bot_member, perm, False):
+                    missing_permissions.append(perm)
+                    
+            if missing_permissions:
+                await message.reply_text(f"Bot membutuhkan permission tambahan: {', '.join(missing_permissions)}")
+                return
+                
         except Exception as e:
             await message.reply_text("Gagal memeriksa status admin bot. Pastikan bot sudah menjadi admin di grup.")
+            print(f"Admin check error: {str(e)}")  # Debug print
             return
             
         group_link = f"https://t.me/{chat.username}" if chat.username else chat.invite_link
@@ -130,7 +154,7 @@ async def add_group_command(client, message):
         await message.reply_text(f"Grup {group_name} berhasil ditambahkan!")
         
     except Exception as e:
-        await message.reply_text("Gagal menambahkan grup. Pastikan:\n- Bot sudah dimasukkan ke dalam grup\n- Bot sudah menjadi admin\n- Username/link grup valid\n- Tipe chat adalah grup/supergroup/channel")
+        await message.reply_text("Gagal menambahkan grup. Pastikan:\n- Bot sudah dimasukkan ke dalam grup\n- Bot sudah menjadi admin dengan permission yang cukup\n- Username/link grup valid\n- Tipe chat adalah grup/supergroup/channel")
         print(f"Error in add_group_command: {str(e)}")  # Debug print
 
 @app.on_message(filters.command("addadmin") & filters.private)
