@@ -30,7 +30,7 @@ cooldown_users = []
 
 # Welcome message
 start_message = '''
-Selamat Datang Di *Ferdi Menfess*
+Selamat Datang Di **Ferdi Menfess**
 
 kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini:
 
@@ -62,7 +62,7 @@ async def start_command(client, message):
     
     await message.reply_text(start_message.format(tags), 
                              reply_markup=keyboard,
-                             parse_mode="markdown")
+                             parse_mode="Markdown")
 
 # Perintah Ping - hanya untuk owner
 @app.on_message(filters.command(["ping"]) & filters.private)
@@ -149,8 +149,8 @@ async def on_group_selection(client, callback_query):
             [InlineKeyboardButton("Cek Postingan", url=post_link)]
         ])
         
-        await callback_query.message.reply_text("*Menfess Berhasil Diposting!!*",
-                                                parse_mode="markdown",
+        await callback_query.message.reply_text("**Menfess Berhasil Diposting!!**",
+                                                parse_mode="Markdown",
                                                 reply_markup=keyboard)
         await add_to_cooldown(user_id)
         
