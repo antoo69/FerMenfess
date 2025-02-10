@@ -246,7 +246,9 @@ async def handle_menfess(client, message):
         buttons.append([InlineKeyboardButton(name, callback_data=f"g_{name[:10]}")])
     
     keyboard = InlineKeyboardMarkup(buttons)
-    await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
+    reply = await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
+    # Store message reference for later use
+    reply.menfess_message = message
 
 @app.on_callback_query(filters.regex(r"g_.*"))
 async def on_group_selection(client, callback_query):
@@ -261,7 +263,7 @@ async def on_group_selection(client, callback_query):
             return
             
         # Get the original message that triggered the menfess
-        original_message = callback_query.message.reply_to_message
+        original_message = callback_query.message.menfess_message
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
