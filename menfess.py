@@ -105,18 +105,6 @@ async def add_group_command(client, message):
                     print(f"Bot status: {bot_member.status}")  # Debug print
                     return
                     
-                # Check bot permissions
-                required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
-                missing_permissions = []
-                
-                for perm in required_permissions:
-                    if not getattr(bot_member, perm, False):
-                        missing_permissions.append(perm)
-                        
-                if missing_permissions:
-                    await message.reply_text(f"Bot membutuhkan permission tambahan: {', '.join(missing_permissions)}")
-                    return
-                    
             except Exception as e:
                 await message.reply_text("Bot belum menjadi member grup. Tambahkan bot ke grup terlebih dahulu.")
                 print(f"Bot not member error: {str(e)}")
@@ -148,6 +136,18 @@ async def add_group_command(client, message):
             "link": group_link
         }
         
+        # Check bot permissions after group added
+        required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
+        missing_permissions = []
+        
+        for perm in required_permissions:
+            if not getattr(bot_member, perm, False):
+                missing_permissions.append(perm)
+                
+        if missing_permissions:
+            await message.reply_text(f"Grup berhasil ditambahkan, namun bot membutuhkan permission tambahan: {', '.join(missing_permissions)}")
+            return
+            
         await message.reply_text(f"Grup {group_name} berhasil ditambahkan!")
         
     except Exception as e:
