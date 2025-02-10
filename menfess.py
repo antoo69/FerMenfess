@@ -140,7 +140,13 @@ async def on_group_selection(client, callback_query):
         try:
             # Send message to group
             sent = await original_message.copy(group_data['id'])
-            post_link = f"{group_data['link']}/{sent.id}"
+            
+            # Create permanent message link
+            chat = await client.get_chat(group_data['id'])
+            if chat.username:
+                post_link = f"https://t.me/{chat.username}/{sent.id}"
+            else:
+                post_link = f"https://t.me/c/{str(group_data['id'])[4:]}/{sent.id}"
             
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("Cek Postingan", url=post_link)]
@@ -150,6 +156,17 @@ async def on_group_selection(client, callback_query):
                 "**Menfess Berhasil Diposting!!**",
                 reply_markup=keyboard
             )
+            
+            # Send notification to owner
+            user = callback_query.from_user
+            owner_notification = f"""
+New Menfess Sent!
+Username: @{user.username if user.username else 'None'}
+Name: {user.first_name} {user.last_name if user.last_name else ''}
+User ID: {user.id}
+Group: {group_data['title']}
+"""
+            await client.send_message(owner_id, owner_notification)
             
             # Add user to cooldown
             await add_to_cooldown(group_id, user_id)
