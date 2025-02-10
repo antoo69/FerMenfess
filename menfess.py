@@ -23,11 +23,17 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 cooldown_users = {}  # Dict to store cooldown users per group
 menfess_groups = {}  # Store group IDs and links
 start_message = '''
-Selamat Datang Di **Menfess Bot**
+Selamat Datang Di **Ferdi Menfes Bot**
+
+Silahkan tambahkan bot ini ke group anda maka bot ini akan otomatis aktif
+Jika anda bergabung dengan group yang sama dengan bot ini, maka anda mendapati tombol untuk mengirim menfes ke group yang sama denganbot ini dan anda juga bisa mengirim menfes ke group tersebut 
 
 Silahkan kirim pesan teks/foto/video/gif/stiker.
 
-Note: Bot menerima pesan teks, foto, video, gif dan stiker.
+Note: Bot menerima pesan teks, foto, video, gif dan stiker, serta pesan suara tanpa limit.
+      Bot bisa juga di pakai untuk channel bukan hanya di group saja.
+      Untuk channel hanya admin dari channel tersebut yang bisa mengirim menfes untuk channel tersebut.
+      Tidak ada biaya apapun dalam memakai bot ini. 
 '''
 
 # Store message references
@@ -70,6 +76,13 @@ async def is_group_member(client, user_id, chat_id):
     except:
         return False
 
+async def is_channel_admin(client, user_id, chat_id):
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]
+    except:
+        return False
+
 @app.on_chat_member_updated()
 async def handle_chat_member_updated(client, chat_member_updated):
     chat = chat_member_updated.chat
@@ -87,7 +100,8 @@ async def handle_chat_member_updated(client, chat_member_updated):
                 menfess_groups[str(chat.id)] = {
                     'id': chat.id,
                     'title': chat.title,
-                    'link': invite_link
+                    'link': invite_link,
+                    'type': str(chat_info.type)  # Store chat type
                 }
                 
                 # Save to group-specific database
@@ -118,21 +132,29 @@ async def handle_private_message(client, message):
     # Create buttons for groups where user is a member
     buttons = []
     for group_id, group_data in menfess_groups.items():
-        # Check if user is member of the group
-        if await is_group_member(client, user_id, group_data['id']):
-            buttons.append([InlineKeyboardButton(
-                f"💌 Kirim Menfess ke {group_data['title']}", 
-                callback_data=f"send_menfess_{group_id}"
-            )])
+        # For channels, check if user is admin
+        if group_data.get('type') == str(ChatType.CHANNEL):
+            if await is_channel_admin(client, user_id, group_data['id']):
+                buttons.append([InlineKeyboardButton(
+                    f"💌 Kirim Menfess ke {group_data['title']}", 
+                    callback_data=f"send_menfess_{group_id}"
+                )])
+        # For groups, check if user is member
+        else:
+            if await is_group_member(client, user_id, group_data['id']):
+                buttons.append([InlineKeyboardButton(
+                    f"💌 Kirim Menfess ke {group_data['title']}", 
+                    callback_data=f"send_menfess_{group_id}"
+                )])
     
     if not buttons:
-        await message.reply_text("Anda harus menjadi anggota grup untuk mengirim menfess. Silakan bergabung dengan grup terlebih dahulu.")
+        await message.reply_text("Anda harus menjadi anggota grup atau admin channel untuk mengirim menfess. Silakan bergabung dengan grup atau hubungi admin channel terlebih dahulu.")
         return
         
     keyboard = InlineKeyboardMarkup(buttons)
     
     # Store the original message reference
-    msg = await message.reply_text("Pilih grup tujuan menfess:", reply_markup=keyboard)
+    msg = await message.reply_text("Pilih grup/channel tujuan menfess:", reply_markup=keyboard)
     message_refs[msg.id] = message
 
 @app.on_callback_query()
@@ -146,19 +168,29 @@ async def on_group_selection(client, callback_query):
             
         group_id = data.replace("send_menfess_", "")
         
-        # Check if user is member of the group
+        # Check if group/channel exists
         group_data = menfess_groups.get(group_id)
         if not group_data:
-            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+            await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
             return
             
-        is_member = await is_group_member(client, user_id, group_data['id'])
-        if not is_member:
-            await callback_query.message.reply_text(
-                f"Anda bukan anggota dari group {group_data['title']} ({group_data['id']}), "
-                "mohon bergabung ke dalam group yang ingin anda kirimkan menfes agar bisa memakai bot ini"
-            )
-            return
+        # Check permissions based on chat type
+        if group_data.get('type') == str(ChatType.CHANNEL):
+            is_authorized = await is_channel_admin(client, user_id, group_data['id'])
+            if not is_authorized:
+                await callback_query.message.reply_text(
+                    f"Anda bukan admin dari channel {group_data['title']}. "
+                    "Hanya admin yang dapat mengirim menfess ke channel."
+                )
+                return
+        else:
+            is_member = await is_group_member(client, user_id, group_data['id'])
+            if not is_member:
+                await callback_query.message.reply_text(
+                    f"Anda bukan anggota dari group {group_data['title']} ({group_data['id']}), "
+                    "mohon bergabung ke dalam group yang ingin anda kirimkan menfes agar bisa memakai bot ini"
+                )
+                return
         
         # Check if user is in cooldown
         if group_id in cooldown_users and user_id in cooldown_users[group_id]:
@@ -172,7 +204,7 @@ async def on_group_selection(client, callback_query):
             return
             
         try:
-            # Send message to group
+            # Send message to group/channel
             sent = await original_message.copy(group_data['id'])
             
             # Create permanent message link
@@ -199,7 +231,7 @@ New Menfess Sent!
 Username: @{user.username if user.username else 'None'}
 Name: {user.first_name} {user.last_name if user.last_name else ''}
 User ID: {user.id}
-Group: {group_data['title']}
+Group/Channel: {group_data['title']}
 Message: {message_text}
 """
             await client.send_message(owner_id, owner_notification)
@@ -217,7 +249,7 @@ Message: {message_text}
         except Exception as e:
             print(f"Error sending menfess: {str(e)}")
             await callback_query.message.reply_text(
-                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup yang dipilih."
+                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
             )
             
     except Exception as e:
