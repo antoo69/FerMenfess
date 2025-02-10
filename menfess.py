@@ -110,5 +110,62 @@ async def handle_private_message(client, message):
     msg = await message.reply_text("Pilih grup tujuan menfess:", reply_markup=keyboard)
     message_refs[msg.id] = message
 
+@app.on_callback_query()
+async def on_group_selection(client, callback_query):
+    try:
+        user_id = callback_query.from_user.id
+        data = callback_query.data
+        
+        if not data.startswith("send_menfess_"):
+            return
+            
+        group_id = data.replace("send_menfess_", "")
+        
+        # Check if user is in cooldown
+        if group_id in cooldown_users and user_id in cooldown_users[group_id]:
+            await callback_query.message.reply_text(f"Mohon tunggu {delay_time} detik sebelum mengirim menfess lagi.")
+            return
+            
+        # Get the original message
+        original_message = message_refs.get(callback_query.message.id)
+        if not original_message:
+            await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
+            return
+            
+        group_data = menfess_groups.get(group_id)
+        if not group_data:
+            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+            return
+            
+        try:
+            # Send message to group
+            sent = await original_message.copy(group_data['id'])
+            post_link = f"{group_data['link']}/{sent.id}"
+            
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Cek Postingan", url=post_link)]
+            ])
+            
+            await callback_query.message.reply_text(
+                "**Menfess Berhasil Diposting!!**",
+                reply_markup=keyboard
+            )
+            
+            # Add user to cooldown
+            await add_to_cooldown(group_id, user_id)
+            
+            # Clean up message reference
+            del message_refs[callback_query.message.id]
+            
+        except Exception as e:
+            print(f"Error sending menfess: {str(e)}")
+            await callback_query.message.reply_text(
+                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup yang dipilih."
+            )
+            
+    except Exception as e:
+        print(f"Error in callback: {str(e)}")
+        await callback_query.message.reply_text("Terjadi kesalahan. Silakan coba lagi.")
+
 print("\n\nBOT TELAH AKTIF!!!")
 app.run()
