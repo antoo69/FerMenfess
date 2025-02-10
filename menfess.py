@@ -212,7 +212,7 @@ async def handle_private_message(client, message):
                 )])
     
     if not buttons:
-        await message.reply_text("Anda harus menjadi anggota grup atau admin channel untuk mengirim menfess. Silakan bergabung dengan grup atau hubungi admin channel terlebih dahulu.")
+        await message.reply_text("Anda tidak mempunyai group yang sama dengan bot ini\ntolong tambahkan bot ini kedalam group anda\nagar anda bisa mengirim menfess")
         return
         
     keyboard = InlineKeyboardMarkup(buttons)
