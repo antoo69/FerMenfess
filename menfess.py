@@ -125,18 +125,27 @@ async def handle_menfess(client, message):
 
 @app.on_callback_query(filters.regex(r"group[1-3]"))
 async def on_group_selection(client, callback_query):
-    user_id = callback_query.from_user.id
-    selected_group = callback_query.data
-    message = callback_query.message
-    
-    group_id = {
-        "group1": group1_id,
-        "group2": group2_id,
-        "group3": group3_id
-    }[selected_group]
-    
     try:
-        sent = await app.send_message(group_id, message.reply_to_message.text)
+        user_id = callback_query.from_user.id
+        selected_group = callback_query.data
+        original_message = callback_query.message.reply_to_message
+        
+        if not original_message or not original_message.text:
+            await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
+            return
+            
+        group_id = {
+            "group1": group1_id,
+            "group2": group2_id,
+            "group3": group3_id
+        }.get(selected_group)
+        
+        if not group_id:
+            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+            return
+            
+        sent = await app.send_message(int(group_id), original_message.text)
+        
         group_links = {
             "group1": group1_link,
             "group2": group2_link,
@@ -149,11 +158,12 @@ async def on_group_selection(client, callback_query):
         ])
         
         await callback_query.message.reply_text("**Menfess Berhasil Diposting!!**",
-                                                reply_markup=keyboard)
+                                              reply_markup=keyboard)
         await add_to_cooldown(user_id)
         
     except Exception as e:
-        await callback_query.message.reply_text("Gagal mengirim menfess. Silakan coba lagi.")
+        print(f"Error in on_group_selection: {str(e)}")
+        await callback_query.message.reply_text(f"Gagal mengirim menfess: {str(e)}")
 
 print("\n\nBOT TELAH AKTIF!!! @GARZPROJECT")
 app.run()
