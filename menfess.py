@@ -134,8 +134,13 @@ async def add_group_command(client, message):
             
         group_link = f"https://t.me/{chat.username}" if chat.username else chat.invite_link
         if not group_link:
-            await message.reply_text("Grup harus memiliki username atau invite link!")
-            return
+            try:
+                # Try to create invite link if bot has permission
+                group_link = await app.create_chat_invite_link(chat.id)
+                group_link = group_link.invite_link
+            except:
+                await message.reply_text("Grup harus memiliki username atau bot harus memiliki izin untuk membuat invite link!")
+                return
             
         group_name = chat.title
         menfess_groups[group_name] = {
