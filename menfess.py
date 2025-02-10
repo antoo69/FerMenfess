@@ -5,6 +5,7 @@ import json
 from dotenv import load_dotenv
 import asyncio
 from pyrogram.enums import ChatType, ChatMemberStatus
+import time
 
 load_dotenv()
 
@@ -34,6 +35,23 @@ message_refs = {}
 
 # Create data directory if not exists
 os.makedirs("data", exist_ok=True)
+
+# Load existing groups from data directory
+def load_existing_groups():
+    for item in os.listdir("data"):
+        group_path = os.path.join("data", item)
+        if os.path.isdir(group_path):
+            group_info_path = os.path.join(group_path, "group_info.json")
+            if os.path.exists(group_info_path):
+                try:
+                    with open(group_info_path, "r") as f:
+                        group_data = json.load(f)
+                        menfess_groups[str(group_data['id'])] = group_data
+                except Exception as e:
+                    print(f"Error loading group data from {group_info_path}: {str(e)}")
+
+# Load existing groups on startup
+load_existing_groups()
 
 async def add_to_cooldown(group_id, user_id):
     if group_id not in cooldown_users:
@@ -82,11 +100,18 @@ async def handle_chat_member_updated(client, chat_member_updated):
         except Exception as e:
             print(f"Error handling new chat member: {str(e)}")
 
+@app.on_message(filters.command("ping") & filters.private)
+async def ping_command(client, message):
+    start = time.time()
+    reply = await message.reply_text("Pong!")
+    end = time.time()
+    await reply.edit_text(f"Pong! `{round((end-start)*1000)}ms`")
+
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
     await message.reply_text(start_message)
 
-@app.on_message(filters.private & ~filters.command("start"))
+@app.on_message(filters.private & ~filters.command(["start", "ping"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
     
@@ -121,6 +146,20 @@ async def on_group_selection(client, callback_query):
             
         group_id = data.replace("send_menfess_", "")
         
+        # Check if user is member of the group
+        group_data = menfess_groups.get(group_id)
+        if not group_data:
+            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+            return
+            
+        is_member = await is_group_member(client, user_id, group_data['id'])
+        if not is_member:
+            await callback_query.message.reply_text(
+                f"Anda bukan anggota dari group {group_data['title']} ({group_data['id']}), "
+                "mohon bergabung ke dalam group yang ingin anda kirimkan menfes agar bisa memakai bot ini"
+            )
+            return
+        
         # Check if user is in cooldown
         if group_id in cooldown_users and user_id in cooldown_users[group_id]:
             await callback_query.message.reply_text(f"Mohon tunggu {delay_time} detik sebelum mengirim menfess lagi.")
@@ -130,11 +169,6 @@ async def on_group_selection(client, callback_query):
         original_message = message_refs.get(callback_query.message.id)
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
-            return
-            
-        group_data = menfess_groups.get(group_id)
-        if not group_data:
-            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
             return
             
         try:
@@ -157,16 +191,22 @@ async def on_group_selection(client, callback_query):
                 reply_markup=keyboard
             )
             
-            # Send notification to owner
+            # Send notification to owner with message content
             user = callback_query.from_user
+            message_text = original_message.text if original_message.text else "[Media Message]"
             owner_notification = f"""
 New Menfess Sent!
 Username: @{user.username if user.username else 'None'}
 Name: {user.first_name} {user.last_name if user.last_name else ''}
 User ID: {user.id}
 Group: {group_data['title']}
+Message: {message_text}
 """
             await client.send_message(owner_id, owner_notification)
+            
+            # If original message contains media, forward it to owner
+            if original_message.media:
+                await original_message.copy(owner_id)
             
             # Add user to cooldown
             await add_to_cooldown(group_id, user_id)
