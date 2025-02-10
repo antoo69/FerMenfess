@@ -40,7 +40,7 @@ def is_owner(user_id):
 def is_admin(user_id):
     return user_id in admin_list or user_id == owner_id
 
-@app.on_message(filters.command(["start"]) & filters.private)
+@app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
     user_id = message.from_user.id
     
@@ -62,7 +62,7 @@ async def start_command(client, message):
     
     await message.reply_text(start_message, reply_markup=keyboard)
 
-@app.on_message(filters.command(["setmessage"]) & filters.private)
+@app.on_message(filters.command("setmessage") & filters.private)
 async def set_message_command(client, message):
     if not is_owner(message.from_user.id):
         await message.reply_text("Hanya owner yang dapat menggunakan perintah ini!")
@@ -76,7 +76,7 @@ async def set_message_command(client, message):
     start_message = " ".join(message.command[1:])
     await message.reply_text("Pesan start berhasil diubah!")
 
-@app.on_message(filters.command(["addgroup"]) & filters.private)
+@app.on_message(filters.command("addgroup") & filters.private)
 async def add_group_command(client, message):
     if not is_owner(message.from_user.id):
         await message.reply_text("Hanya owner yang dapat menggunakan perintah ini!")
@@ -95,7 +95,7 @@ async def add_group_command(client, message):
     except:
         await message.reply_text("Format: /addgroup [nama_grup] [group_id] [group_link]")
 
-@app.on_message(filters.command(["addadmin"]) & filters.private)
+@app.on_message(filters.command("addadmin") & filters.private)
 async def add_admin_command(client, message):
     if not is_owner(message.from_user.id):
         await message.reply_text("Hanya owner yang dapat menggunakan perintah ini!")
@@ -113,7 +113,7 @@ async def add_admin_command(client, message):
     except:
         await message.reply_text("Format: /addadmin [user_id]")
 
-@app.on_message(filters.command(["ping"]) & filters.private)
+@app.on_message(filters.command("ping") & filters.private)
 async def ping_command(client, message):
     if not is_admin(message.from_user.id):
         await message.reply_text("Hanya admin yang dapat menggunakan perintah ini!")
@@ -122,7 +122,7 @@ async def ping_command(client, message):
     total_users = len(open("member.db", "r").readlines())
     await message.reply_text(f"Bot Aktif!!!!\nTotal Pengguna Bot: {total_users}")
 
-@app.on_message(filters.command(["broadcast"]) & filters.private)
+@app.on_message(filters.command("broadcast") & filters.private)
 async def broadcast_command(client, message):
     if not is_admin(message.from_user.id):
         await message.reply_text("Hanya admin yang dapat menggunakan perintah ini!")
@@ -130,7 +130,7 @@ async def broadcast_command(client, message):
         
     await message.reply_text("Masukkan pesan broadcast:")
     
-    @app.on_message(filters.private & ~filters.command())
+    @app.on_message(filters.private & ~filters.command([]))
     async def broadcast_message(client, broadcast_msg):
         if broadcast_msg.from_user.id == message.from_user.id:
             with open("member.db", "r") as file:
@@ -143,7 +143,7 @@ async def broadcast_command(client, message):
                         print(f"Gagal mengirim ke {user}: {str(e)}")
             await message.reply_text("Pesan broadcast berhasil dikirim.")
 
-@app.on_message(filters.private & ~filters.command())
+@app.on_message(filters.private & ~filters.command([]))
 async def handle_menfess(client, message):
     user_id = message.from_user.id
     user_mention = message.from_user.mention
