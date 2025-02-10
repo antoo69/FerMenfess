@@ -4,7 +4,7 @@ import os
 import json
 from dotenv import load_dotenv
 import asyncio
-from pyrogram.enums import ChatType
+from pyrogram.enums import ChatType, ChatMemberStatus
 
 load_dotenv()
 
@@ -99,7 +99,24 @@ async def add_group_command(client, message):
             
             # Check if bot is member of the group
             try:
-                await app.get_chat_member(chat.id, "me")
+                bot_member = await app.get_chat_member(chat.id, "me")
+                if bot_member.status != ChatMemberStatus.ADMINISTRATOR:
+                    await message.reply_text("Bot harus menjadi admin di grup/channel tersebut!")
+                    print(f"Bot status: {bot_member.status}")  # Debug print
+                    return
+                    
+                # Check bot permissions
+                required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
+                missing_permissions = []
+                
+                for perm in required_permissions:
+                    if not getattr(bot_member, perm, False):
+                        missing_permissions.append(perm)
+                        
+                if missing_permissions:
+                    await message.reply_text(f"Bot membutuhkan permission tambahan: {', '.join(missing_permissions)}")
+                    return
+                    
             except Exception as e:
                 await message.reply_text("Bot belum menjadi member grup. Tambahkan bot ke grup terlebih dahulu.")
                 print(f"Bot not member error: {str(e)}")
@@ -113,31 +130,6 @@ async def add_group_command(client, message):
         valid_types = [ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]
         if chat.type not in valid_types:
             await message.reply_text(f"Hanya grup, supergroup, atau channel yang dapat ditambahkan! (Tipe saat ini: {chat.type})")
-            return
-            
-        # Check if bot is admin
-        try:
-            bot_member = await app.get_chat_member(chat.id, "me")
-            if bot_member.status != "administrator":
-                await message.reply_text("Bot harus menjadi admin di grup/channel tersebut!")
-                print(f"Bot status: {bot_member.status}")  # Debug print
-                return
-                
-            # Check bot permissions
-            required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
-            missing_permissions = []
-            
-            for perm in required_permissions:
-                if not getattr(bot_member, perm, False):
-                    missing_permissions.append(perm)
-                    
-            if missing_permissions:
-                await message.reply_text(f"Bot membutuhkan permission tambahan: {', '.join(missing_permissions)}")
-                return
-                
-        except Exception as e:
-            await message.reply_text("Gagal memeriksa status admin bot. Pastikan bot sudah menjadi admin di grup.")
-            print(f"Admin check error: {str(e)}")  # Debug print
             return
             
         group_link = f"https://t.me/{chat.username}" if chat.username else chat.invite_link
