@@ -30,6 +30,9 @@ Silahkan kirim pesan teks/foto/video/gif/stiker.
 Note: Bot menerima pesan teks, foto, video, gif dan stiker.
 '''
 
+# Store message references
+message_refs = {}
+
 async def add_to_cooldown(user_id):
     cooldown_users.append(user_id)
     await asyncio.sleep(delay_time)
@@ -247,8 +250,9 @@ async def handle_menfess(client, message):
     
     keyboard = InlineKeyboardMarkup(buttons)
     reply = await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
-    # Store message reference for later use
-    reply.menfess_message = message
+    
+    # Store message reference in global dict
+    message_refs[reply.id] = message
 
 @app.on_callback_query(filters.regex(r"g_.*"))
 async def on_group_selection(client, callback_query):
@@ -262,8 +266,8 @@ async def on_group_selection(client, callback_query):
             await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
             return
             
-        # Get the original message that triggered the menfess
-        original_message = callback_query.message.menfess_message
+        # Get the original message from global dict
+        original_message = message_refs.get(callback_query.message.id)
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
@@ -298,6 +302,10 @@ async def on_group_selection(client, callback_query):
         
         await callback_query.message.reply_text("**Menfess Berhasil Diposting!!**",
                                               reply_markup=keyboard)
+        
+        # Clean up message reference
+        del message_refs[callback_query.message.id]
+        
         await add_to_cooldown(user_id)
         
     except Exception as e:
