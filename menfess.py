@@ -94,12 +94,15 @@ async def add_group_command(client, message):
         # Get chat info
         try:
             chat = await app.get_chat(group_username)
+            print(f"Chat type: {chat.type}")  # Debug print
         except Exception as e:
             await message.reply_text("Gagal mendapatkan info grup. Pastikan:\n- Username/link grup benar\n- Bot sudah dimasukkan ke dalam grup\n- Bot sudah menjadi admin di grup")
+            print(f"Error getting chat: {str(e)}")  # Debug print
             return
             
-        if chat.type not in ["group", "supergroup", "channel"]:
-            await message.reply_text("Hanya grup, supergroup, atau channel yang dapat ditambahkan!")
+        valid_types = ["group", "supergroup", "channel"]
+        if chat.type.lower() not in valid_types:
+            await message.reply_text(f"Hanya grup, supergroup, atau channel yang dapat ditambahkan! (Tipe saat ini: {chat.type})")
             return
             
         # Check if bot is admin
@@ -127,6 +130,7 @@ async def add_group_command(client, message):
         
     except Exception as e:
         await message.reply_text("Gagal menambahkan grup. Pastikan:\n- Bot sudah dimasukkan ke dalam grup\n- Bot sudah menjadi admin\n- Username/link grup valid\n- Tipe chat adalah grup/supergroup/channel")
+        print(f"Error in add_group_command: {str(e)}")  # Debug print
 
 @app.on_message(filters.command("addadmin") & filters.private)
 async def add_admin_command(client, message):
