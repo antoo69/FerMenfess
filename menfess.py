@@ -4,6 +4,7 @@ import os
 import json
 from dotenv import load_dotenv
 import asyncio
+from pyrogram.enums import ChatType
 
 load_dotenv()
 
@@ -100,8 +101,8 @@ async def add_group_command(client, message):
             print(f"Error getting chat: {str(e)}")  # Debug print
             return
             
-        valid_types = ["group", "supergroup", "channel"]
-        if chat.type.lower() not in valid_types:
+        valid_types = [ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]
+        if chat.type not in valid_types:
             await message.reply_text(f"Hanya grup, supergroup, atau channel yang dapat ditambahkan! (Tipe saat ini: {chat.type})")
             return
             
