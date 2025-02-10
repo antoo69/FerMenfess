@@ -19,9 +19,8 @@ delay_time = int(os.getenv("DELAY"))  # Delay time
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 # Store data
-cooldown_users = {}  # Changed to dict to support multiple instances
-menfess_groups = {}  # Store group IDs and links per bot token
-admin_list = {}  # Store admin IDs per bot token
+cooldown_users = {}  # Dict to store cooldown users per group
+menfess_groups = {}  # Store group IDs and links
 start_message = '''
 Selamat Datang Di **Menfess Bot**
 
@@ -33,118 +32,78 @@ Note: Bot menerima pesan teks, foto, video, gif dan stiker.
 # Store message references
 message_refs = {}
 
-# Store bot instances
-bot_instances = {}
+# Create data directory if not exists
+os.makedirs("data", exist_ok=True)
 
-async def add_to_cooldown(bot_token, user_id):
-    if bot_token not in cooldown_users:
-        cooldown_users[bot_token] = []
-    cooldown_users[bot_token].append(user_id)
+async def add_to_cooldown(group_id, user_id):
+    if group_id not in cooldown_users:
+        cooldown_users[group_id] = []
+    cooldown_users[group_id].append(user_id)
     await asyncio.sleep(delay_time)
-    cooldown_users[bot_token].remove(user_id)
+    cooldown_users[group_id].remove(user_id)
 
 def is_owner(user_id):
     return user_id == owner_id
 
-def is_admin(bot_token, user_id):
-    if bot_token not in admin_list:
-        admin_list[bot_token] = []
-    return user_id in admin_list[bot_token] or user_id == owner_id
-
-def create_bot_instance(bot_token):
-    try:
-        if bot_token not in bot_instances:
-            bot = Client(f"menfess_bot_{bot_token[-6:]}", 
-                        api_id=api_id,
-                        api_hash=api_hash,
-                        bot_token=bot_token)
-            bot_instances[bot_token] = bot
-            
-            # Initialize data structures for this bot
-            menfess_groups[bot_token] = {}
-            admin_list[bot_token] = []
-            cooldown_users[bot_token] = []
-            
-            # Create bot-specific database files
-            os.makedirs(f"data/{bot_token}", exist_ok=True)
-            with open(f"data/{bot_token}/groups.json", "w") as f:
-                json.dump({}, f)
-            with open(f"data/{bot_token}/member.db", "w") as f:
-                f.write("")
+@app.on_chat_member_updated()
+async def handle_chat_member_updated(client, chat_member_updated):
+    chat = chat_member_updated.chat
+    new_member = chat_member_updated.new_chat_member
+    
+    if new_member and new_member.user.id == app.me.id:
+        # Bot was added to a group/channel
+        try:
+            chat_info = await client.get_chat(chat.id)
+            if chat_info.type in [ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]:
+                # Get invite link
+                invite_link = await chat_info.export_invite_link()
                 
-            return bot
-    except Exception as e:
-        print(f"Error creating bot instance: {str(e)}")
-        return None
-
-@app.on_message(filters.command("clone") & filters.private)
-async def clone_bot(client, message):
-    if not is_owner(message.from_user.id):
-        await message.reply_text("Hanya owner yang dapat menggunakan perintah ini!")
-        return
-        
-    try:
-        # Get bot token from command or forwarded message
-        if len(message.command) > 1:
-            new_bot_token = message.command[1]
-        elif message.forward_from is not None and message.forward_from.username == "BotFather":
-            token_line = [line for line in message.text.split('\n') if ':' in line]
-            if token_line:
-                new_bot_token = token_line[0].split(':')[1].strip()
-            else:
-                await message.reply_text("Bot token tidak ditemukan dalam pesan yang diteruskan")
-                return
-        else:
-            await message.reply_text("Silakan masukkan bot token atau teruskan pesan dari BotFather")
-            return
-            
-        # Validate bot token format
-        if not new_bot_token or ':' not in new_bot_token:
-            await message.reply_text("Format bot token tidak valid")
-            return
-            
-        # Create new bot instance
-        await message.reply_text("Sedang membuat instance bot baru...")
-        new_bot = create_bot_instance(new_bot_token)
-        if new_bot:
-            try:
-                await new_bot.start()
-                await message.reply_text("Bot berhasil di-clone! Silakan tambahkan grup dengan /addgroup")
-            except Exception as e:
-                print(f"Error starting bot: {str(e)}")
-                await message.reply_text(f"Gagal menjalankan bot: {str(e)}")
-        else:
-            await message.reply_text("Gagal membuat instance bot baru")
-            
-    except Exception as e:
-        print(f"Error in clone_bot: {str(e)}")
-        await message.reply_text(f"Gagal melakukan clone bot: {str(e)}")
+                # Store group info
+                menfess_groups[str(chat.id)] = {
+                    'id': chat.id,
+                    'title': chat.title,
+                    'link': invite_link
+                }
+                
+                # Save to group-specific database
+                os.makedirs(f"data/{chat.id}", exist_ok=True)
+                with open(f"data/{chat.id}/group_info.json", "w") as f:
+                    json.dump(menfess_groups[str(chat.id)], f)
+                    
+                # Create member database for this group
+                open(f"data/{chat.id}/members.db", "a").close()
+                
+                print(f"Bot added to {chat.title} ({chat.id})")
+                
+        except Exception as e:
+            print(f"Error handling new chat member: {str(e)}")
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
-    bot_token = client.bot_token
     user_id = message.from_user.id
     
-    if bot_token not in menfess_groups or not menfess_groups[bot_token]:
-        if is_owner(user_id):
-            await message.reply_text("Harap tambahkan grup terlebih dahulu dengan perintah /addgroup")
-            return
-        else:
-            await message.reply_text("Bot belum dikonfigurasi. Hubungi owner bot.")
-            return
-            
-    keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Channel Menfess", url=list(menfess_groups[bot_token].values())[0]['link'])]])
+    # Create buttons for all groups bot is in
+    buttons = []
+    for group_id, group_data in menfess_groups.items():
+        buttons.append([InlineKeyboardButton(
+            f"💌 Kirim Menfess ke {group_data['title']}", 
+            callback_data=f"send_menfess_{group_id}"
+        )])
     
-    # Store user ID for broadcast
-    with open(f"data/{bot_token}/member.db", "a+") as file:
-        file.seek(0)
-        if str(user_id) not in file.read().splitlines():
-            file.write(f"{user_id}\n")
+    if not buttons:
+        await message.reply_text("Bot belum ditambahkan ke grup manapun. Silakan tambahkan bot ke grup terlebih dahulu.")
+        return
+        
+    keyboard = InlineKeyboardMarkup(buttons)
+    
+    # Store user ID in all group member databases
+    for group_id in menfess_groups:
+        with open(f"data/{group_id}/members.db", "a+") as file:
+            file.seek(0)
+            if str(user_id) not in file.read().splitlines():
+                file.write(f"{user_id}\n")
     
     await message.reply_text(start_message, reply_markup=keyboard)
-
-# ... (remaining handlers follow same pattern of using bot_token for data access)
-# Update all other command handlers to use bot_token for accessing data structures
 
 print("\n\nBOT TELAH AKTIF!!!")
 app.run()
