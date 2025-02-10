@@ -96,7 +96,7 @@ async def broadcast_command(client, message):
     else:
         await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
 
-@app.on_message(filters.private & filters.text & ~filters.command)
+@app.on_message(filters.private & filters.text & ~filters.command())
 async def handle_menfess(client, message):
     user_id = message.from_user.id
     text = message.text
