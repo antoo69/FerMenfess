@@ -136,6 +136,10 @@ async def add_group_command(client, message):
             "link": group_link
         }
         
+        # Save groups to file
+        with open("groups.json", "w") as f:
+            json.dump(menfess_groups, f)
+        
         # Check bot permissions after group added
         required_permissions = ["can_post_messages", "can_edit_messages", "can_delete_messages"]
         missing_permissions = []
@@ -208,8 +212,13 @@ async def handle_menfess(client, message):
     user_mention = message.from_user.mention
     
     if not menfess_groups:
-        await message.reply_text("Bot belum dikonfigurasi. Hubungi owner bot.")
-        return
+        # Load groups from file if exists
+        try:
+            with open("groups.json", "r") as f:
+                menfess_groups.update(json.load(f))
+        except:
+            await message.reply_text("Bot belum dikonfigurasi. Hubungi owner bot.")
+            return
     
     caption = message.caption if message.media else None
     text = message.text if message.text else caption
@@ -253,8 +262,17 @@ async def on_group_selection(client, callback_query):
             
         group_data = menfess_groups.get(group_name)
         if not group_data:
-            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
-            return
+            # Try to reload groups from file
+            try:
+                with open("groups.json", "r") as f:
+                    menfess_groups.update(json.load(f))
+                group_data = menfess_groups.get(group_name)
+                if not group_data:
+                    await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+                    return
+            except:
+                await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+                return
             
         try:
             await app.get_chat(group_data['id'])
