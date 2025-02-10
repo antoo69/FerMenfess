@@ -242,20 +242,26 @@ async def handle_menfess(client, message):
     # Pilihan grup untuk menfess
     buttons = []
     for name, data in menfess_groups.items():
-        buttons.append([InlineKeyboardButton(name, callback_data=f"group_{name}:{message.id}")])
+        # Limit the callback data length by using a shorter format
+        buttons.append([InlineKeyboardButton(name, callback_data=f"g_{name[:10]}")])
     
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
 
-@app.on_callback_query(filters.regex(r"group_.*:\d+"))
+@app.on_callback_query(filters.regex(r"g_.*"))
 async def on_group_selection(client, callback_query):
     try:
         user_id = callback_query.from_user.id
-        group_name, message_id = callback_query.data.split("_")[1].split(":")
-        message_id = int(message_id)
+        # Get the full group name from the shortened callback data
+        short_name = callback_query.data.split("_")[1]
+        group_name = next((name for name in menfess_groups.keys() if name.startswith(short_name)), None)
         
-        original_message = await app.get_messages(user_id, message_id)
-        
+        if not group_name:
+            await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
+            return
+            
+        # Get the original message that triggered the menfess
+        original_message = callback_query.message.reply_to_message
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
