@@ -83,7 +83,11 @@ async def add_group_command(client, message):
         return
         
     try:
-        _, group_name, group_username = message.command
+        if len(message.command) != 2:
+            await message.reply_text("Format: /addgroup [username/link]")
+            return
+            
+        group_username = message.command[1]
         
         # Get chat info
         chat = await app.get_chat(group_username)
@@ -100,6 +104,7 @@ async def add_group_command(client, message):
             
         group_link = f"https://t.me/{chat.username}" if chat.username else chat.invite_link
         
+        group_name = chat.title
         menfess_groups[group_name] = {
             "id": chat.id,
             "link": group_link
@@ -107,7 +112,7 @@ async def add_group_command(client, message):
         
         await message.reply_text(f"Grup {group_name} berhasil ditambahkan!")
     except Exception as e:
-        await message.reply_text("Format: /addgroup [nama_grup] [username/link]\n\nPastikan:\n- Bot sudah menjadi admin\n- Username/link valid\n- Tipe chat adalah grup/supergroup/channel")
+        await message.reply_text("Format: /addgroup [username/link]\n\nPastikan:\n- Bot sudah menjadi admin\n- Username/link valid\n- Tipe chat adalah grup/supergroup/channel")
 
 @app.on_message(filters.command("addadmin") & filters.private)
 async def add_admin_command(client, message):
