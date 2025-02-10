@@ -48,7 +48,7 @@ def check_trigger(text):
             return True
     return False
 
-@app.on_message(filters.command("start") & filters.private)
+@app.on_message(filters.command(["start"]) & filters.private)
 async def start_command(client, message):
     user_id = message.from_user.id
     tags = '\n'.join(trigger_tags)
@@ -65,7 +65,7 @@ async def start_command(client, message):
                              parse_mode="markdown")
 
 # Perintah Ping - hanya untuk owner
-@app.on_message(filters.command("ping") & filters.private)
+@app.on_message(filters.command(["ping"]) & filters.private)
 async def ping_command(client, message):
     user_id = message.from_user.id
     if user_id == owner_id:  # Hanya owner yang bisa menggunakan
@@ -75,13 +75,13 @@ async def ping_command(client, message):
         await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
 
 # Perintah Broadcast - hanya untuk owner
-@app.on_message(filters.command("broadcast") & filters.private)
+@app.on_message(filters.command(["broadcast"]) & filters.private)
 async def broadcast_command(client, message):
     user_id = message.from_user.id
     if user_id == owner_id:  # Hanya owner yang bisa menggunakan
         await message.reply_text("Masukkan pesan broadcast:")
         
-        @app.on_message(filters.private & ~filters.command)
+        @app.on_message(filters.private & ~filters.command(["broadcast", "start", "ping"]))
         async def broadcast_message(client, broadcast_msg):
             if broadcast_msg.from_user.id == owner_id:  # Verifikasi ulang jika owner
                 with open("member.db", "r") as file:
@@ -96,7 +96,7 @@ async def broadcast_command(client, message):
     else:
         await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
 
-@app.on_message(filters.private & filters.text & ~filters.command())
+@app.on_message(filters.private & filters.text & ~filters.command(["broadcast", "start", "ping"]))
 async def handle_menfess(client, message):
     user_id = message.from_user.id
     text = message.text
