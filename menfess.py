@@ -32,9 +32,11 @@ cooldown_users = []
 start_message = '''
 Selamat Datang Di **Ferdi Menfess**
 
-kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks beserta tag dibawah ini:
+kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks/foto/video/gif/stiker beserta tag dibawah ini:
 
 {}
+
+Note: Bot menerima pesan teks, foto, video, gif dan stiker.
 '''
 
 async def add_to_cooldown(user_id):
@@ -43,6 +45,8 @@ async def add_to_cooldown(user_id):
     cooldown_users.remove(user_id)
 
 def check_trigger(text):
+    if not text:
+        return False
     for word in text.split():
         if any(tag in word for tag in trigger_tags):
             return True
@@ -95,23 +99,29 @@ async def broadcast_command(client, message):
     else:
         await message.reply_text("Kamu tidak memiliki izin untuk menggunakan perintah ini.")
 
-@app.on_message(filters.private & filters.text & ~filters.command(["broadcast", "start", "ping"]))
+@app.on_message(filters.private & ~filters.command(["broadcast", "start", "ping"]))
 async def handle_menfess(client, message):
     user_id = message.from_user.id
-    text = message.text
-    words = len(text.split())
+    
+    caption = message.caption if message.media else None
+    text = message.text if message.text else caption
     
     if user_id in cooldown_users:
         await message.reply_text(f"Gagal mengirim!!\n\nKamu baru saja mengirim menfess, beri jarak {delay_time} detik untuk memposting kembali!")
         return
         
-    if words < 3:
-        await message.reply_text("Gagal mengirim!!\n\nTidak boleh kurang dari 3 kata!!")
-        return
-        
-    if not check_trigger(text):
-        tags = '\n'.join(trigger_tags)
-        await message.reply_text(f"Gagal mengirim!!\n\nHarap gunakan tag dibawah ini:\n{tags}")
+    if text:
+        words = len(text.split())
+        if words < 3:
+            await message.reply_text("Gagal mengirim!!\n\nTidak boleh kurang dari 3 kata!!")
+            return
+            
+        if not check_trigger(text):
+            tags = '\n'.join(trigger_tags)
+            await message.reply_text(f"Gagal mengirim!!\n\nHarap gunakan tag dibawah ini:\n{tags}")
+            return
+    else:
+        await message.reply_text("Gagal mengirim!!\n\nPesan harus memiliki teks atau caption dengan tag!")
         return
     
     # Pilihan grup untuk menfess
@@ -133,7 +143,7 @@ async def on_group_selection(client, callback_query):
         # Get the original message using message_id
         original_message = await app.get_messages(user_id, message_id)
         
-        if not original_message or not original_message.text:
+        if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
             
@@ -155,7 +165,8 @@ async def on_group_selection(client, callback_query):
             print(f"Error accessing group {group_id}: {str(e)}")
             return
             
-        sent = await app.send_message(group_id, original_message.text)
+        # Copy message with media if exists
+        sent = await original_message.copy(group_id)
         
         group_links = {
             "group1": group1_link,
