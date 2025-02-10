@@ -45,6 +45,13 @@ async def add_to_cooldown(group_id, user_id):
 def is_owner(user_id):
     return user_id == owner_id
 
+async def is_group_member(client, user_id, chat_id):
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status not in [ChatMemberStatus.LEFT, ChatMemberStatus.BANNED]
+    except:
+        return False
+
 @app.on_chat_member_updated()
 async def handle_chat_member_updated(client, chat_member_updated):
     chat = chat_member_updated.chat
@@ -70,9 +77,6 @@ async def handle_chat_member_updated(client, chat_member_updated):
                 with open(f"data/{chat.id}/group_info.json", "w") as f:
                     json.dump(menfess_groups[str(chat.id)], f)
                     
-                # Create member database for this group
-                open(f"data/{chat.id}/members.db", "a").close()
-                
                 print(f"Bot added to {chat.title} ({chat.id})")
                 
         except Exception as e:
@@ -80,30 +84,31 @@ async def handle_chat_member_updated(client, chat_member_updated):
 
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
+    await message.reply_text(start_message)
+
+@app.on_message(filters.private & ~filters.command("start"))
+async def handle_private_message(client, message):
     user_id = message.from_user.id
     
-    # Create buttons for all groups bot is in
+    # Create buttons for groups where user is a member
     buttons = []
     for group_id, group_data in menfess_groups.items():
-        buttons.append([InlineKeyboardButton(
-            f"💌 Kirim Menfess ke {group_data['title']}", 
-            callback_data=f"send_menfess_{group_id}"
-        )])
+        # Check if user is member of the group
+        if await is_group_member(client, user_id, group_data['id']):
+            buttons.append([InlineKeyboardButton(
+                f"💌 Kirim Menfess ke {group_data['title']}", 
+                callback_data=f"send_menfess_{group_id}"
+            )])
     
     if not buttons:
-        await message.reply_text("Bot belum ditambahkan ke grup manapun. Silakan tambahkan bot ke grup terlebih dahulu.")
+        await message.reply_text("Anda harus menjadi anggota grup untuk mengirim menfess. Silakan bergabung dengan grup terlebih dahulu.")
         return
         
     keyboard = InlineKeyboardMarkup(buttons)
     
-    # Store user ID in all group member databases
-    for group_id in menfess_groups:
-        with open(f"data/{group_id}/members.db", "a+") as file:
-            file.seek(0)
-            if str(user_id) not in file.read().splitlines():
-                file.write(f"{user_id}\n")
-    
-    await message.reply_text(start_message, reply_markup=keyboard)
+    # Store the original message reference
+    msg = await message.reply_text("Pilih grup tujuan menfess:", reply_markup=keyboard)
+    message_refs[msg.id] = message
 
 print("\n\nBOT TELAH AKTIF!!!")
 app.run()
