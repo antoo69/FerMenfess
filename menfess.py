@@ -18,7 +18,6 @@ group1_link = os.getenv("GROUP1_LINK")  # Group 1 Link
 group2_link = os.getenv("GROUP2_LINK")  # Group 2 Link
 group3_link = os.getenv("GROUP3_LINK")  # Group 3 Link
 admin_list = json.loads(os.getenv("ADMIN"))  # Admin list
-trigger_tags = json.loads(os.getenv("TAG"))  # Trigger tags
 delay_time = int(os.getenv("DELAY"))  # Delay time
 owner_id = int(os.getenv("OWNER_ID"))  # Owner ID
 
@@ -32,9 +31,7 @@ cooldown_users = []
 start_message = '''
 Selamat Datang Di **Ferdi Menfess**
 
-kamu bebas mengirim menfess pada channel support by ferdi, jika ingin memposting menfess silahkan kirim pesan teks/foto/video/gif/stiker beserta tag dibawah ini:
-
-{}
+kamu bebas mengirim menfess pada channel support by ferdi, silahkan kirim pesan teks/foto/video/gif/stiker.
 
 Note: Bot menerima pesan teks, foto, video, gif dan stiker.
 '''
@@ -44,18 +41,9 @@ async def add_to_cooldown(user_id):
     await asyncio.sleep(delay_time)
     cooldown_users.remove(user_id)
 
-def check_trigger(text):
-    if not text:
-        return False
-    for word in text.split():
-        if any(tag in word for tag in trigger_tags):
-            return True
-    return False
-
 @app.on_message(filters.command(["start"]) & filters.private)
 async def start_command(client, message):
     user_id = message.from_user.id
-    tags = '\n'.join(trigger_tags)
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Channel Menfess", url=group1_link)]])
     
     # Store user ID for broadcast
@@ -64,8 +52,7 @@ async def start_command(client, message):
         if str(user_id) not in file.read().splitlines():
             file.write(f"{user_id}\n")
     
-    await message.reply_text(start_message.format(tags), 
-                             reply_markup=keyboard)
+    await message.reply_text(start_message, reply_markup=keyboard)
 
 # Perintah Ping - hanya untuk owner
 @app.on_message(filters.command(["ping"]) & filters.private)
@@ -102,6 +89,7 @@ async def broadcast_command(client, message):
 @app.on_message(filters.private & ~filters.command(["broadcast", "start", "ping"]))
 async def handle_menfess(client, message):
     user_id = message.from_user.id
+    user_mention = message.from_user.mention
     
     caption = message.caption if message.media else None
     text = message.text if message.text else caption
@@ -109,20 +97,12 @@ async def handle_menfess(client, message):
     if user_id in cooldown_users:
         await message.reply_text(f"Gagal mengirim!!\n\nKamu baru saja mengirim menfess, beri jarak {delay_time} detik untuk memposting kembali!")
         return
-        
-    if text:
-        words = len(text.split())
-        if words < 3:
-            await message.reply_text("Gagal mengirim!!\n\nTidak boleh kurang dari 3 kata!!")
-            return
-            
-        if not check_trigger(text):
-            tags = '\n'.join(trigger_tags)
-            await message.reply_text(f"Gagal mengirim!!\n\nHarap gunakan tag dibawah ini:\n{tags}")
-            return
-    else:
-        await message.reply_text("Gagal mengirim!!\n\nPesan harus memiliki teks atau caption dengan tag!")
-        return
+    
+    # Kirim notifikasi ke owner
+    try:
+        await app.send_message(owner_id, f"Ada pesan baru dari: {user_mention}\nUser ID: {user_id}\nIsi pesan: {text}")
+    except Exception as e:
+        print(f"Gagal mengirim notifikasi ke owner: {str(e)}")
     
     # Pilihan grup untuk menfess
     keyboard = InlineKeyboardMarkup([
