@@ -22,6 +22,7 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 # Store data
 cooldown_users = {}  # Dict to store cooldown users per group
 menfess_groups = {}  # Store group IDs and links
+user_ids = set()  # Store user IDs for broadcast
 start_message = '''
 Selamat Datang Di **Ferdi Menfes Bot**
 
@@ -121,13 +122,63 @@ async def ping_command(client, message):
     end = time.time()
     await reply.edit_text(f"Pong! `{round((end-start)*1000)}ms`")
 
+@app.on_message(filters.command("broadcast") & filters.private)
+async def broadcast_command(client, message):
+    if not is_owner(message.from_user.id):
+        await message.reply_text("Maaf, hanya owner bot yang dapat menggunakan perintah ini.")
+        return
+        
+    if len(message.command) < 2 and not message.reply_to_message:
+        await message.reply_text("Silakan balas ke pesan yang ingin disiarkan atau ketik pesan setelah /broadcast")
+        return
+        
+    broadcast_message = message.reply_to_message if message.reply_to_message else message
+    
+    if len(message.command) >= 2:
+        broadcast_text = " ".join(message.command[1:])
+    else:
+        broadcast_text = broadcast_message.text or broadcast_message.caption or ""
+    
+    success_count = 0
+    fail_count = 0
+    
+    progress_msg = await message.reply_text("Memulai broadcast...")
+    
+    for user_id in user_ids:
+        try:
+            if broadcast_message.media:
+                await broadcast_message.copy(user_id)
+            else:
+                await client.send_message(user_id, broadcast_text)
+            success_count += 1
+        except Exception as e:
+            print(f"Failed to send broadcast to {user_id}: {str(e)}")
+            fail_count += 1
+            
+        # Update progress every 5 users
+        if (success_count + fail_count) % 5 == 0:
+            await progress_msg.edit_text(
+                f"Progress: {success_count + fail_count}/{len(user_ids)}\n"
+                f"Berhasil: {success_count}\n"
+                f"Gagal: {fail_count}"
+            )
+    
+    await progress_msg.edit_text(
+        f"Broadcast selesai!\n"
+        f"Total: {len(user_ids)}\n"
+        f"Berhasil: {success_count}\n"
+        f"Gagal: {fail_count}"
+    )
+
 @app.on_message(filters.command("start") & filters.private)
 async def start_command(client, message):
+    user_ids.add(message.from_user.id)
     await message.reply_text(start_message)
 
-@app.on_message(filters.private & ~filters.command(["start", "ping"]))
+@app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
+    user_ids.add(user_id)
     
     # Create buttons for groups where user is a member
     buttons = []
