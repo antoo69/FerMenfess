@@ -52,26 +52,30 @@ def is_admin(bot_token, user_id):
     return user_id in admin_list[bot_token] or user_id == owner_id
 
 def create_bot_instance(bot_token):
-    if bot_token not in bot_instances:
-        bot = Client(f"menfess_bot_{bot_token[-6:]}", 
-                    api_id=api_id,
-                    api_hash=api_hash,
-                    bot_token=bot_token)
-        bot_instances[bot_token] = bot
-        
-        # Initialize data structures for this bot
-        menfess_groups[bot_token] = {}
-        admin_list[bot_token] = []
-        cooldown_users[bot_token] = []
-        
-        # Create bot-specific database files
-        os.makedirs(f"data/{bot_token}", exist_ok=True)
-        with open(f"data/{bot_token}/groups.json", "w") as f:
-            json.dump({}, f)
-        with open(f"data/{bot_token}/member.db", "w") as f:
-            f.write("")
+    try:
+        if bot_token not in bot_instances:
+            bot = Client(f"menfess_bot_{bot_token[-6:]}", 
+                        api_id=api_id,
+                        api_hash=api_hash,
+                        bot_token=bot_token)
+            bot_instances[bot_token] = bot
             
-        return bot
+            # Initialize data structures for this bot
+            menfess_groups[bot_token] = {}
+            admin_list[bot_token] = []
+            cooldown_users[bot_token] = []
+            
+            # Create bot-specific database files
+            os.makedirs(f"data/{bot_token}", exist_ok=True)
+            with open(f"data/{bot_token}/groups.json", "w") as f:
+                json.dump({}, f)
+            with open(f"data/{bot_token}/member.db", "w") as f:
+                f.write("")
+                
+            return bot
+    except Exception as e:
+        print(f"Error creating bot instance: {str(e)}")
+        return None
 
 @app.on_message(filters.command("clone") & filters.private)
 async def clone_bot(client, message):
@@ -94,15 +98,26 @@ async def clone_bot(client, message):
             await message.reply_text("Silakan masukkan bot token atau teruskan pesan dari BotFather")
             return
             
+        # Validate bot token format
+        if not new_bot_token or ':' not in new_bot_token:
+            await message.reply_text("Format bot token tidak valid")
+            return
+            
         # Create new bot instance
+        await message.reply_text("Sedang membuat instance bot baru...")
         new_bot = create_bot_instance(new_bot_token)
         if new_bot:
-            await new_bot.start()
-            await message.reply_text("Bot berhasil di-clone! Silakan tambahkan grup dengan /addgroup")
+            try:
+                await new_bot.start()
+                await message.reply_text("Bot berhasil di-clone! Silakan tambahkan grup dengan /addgroup")
+            except Exception as e:
+                print(f"Error starting bot: {str(e)}")
+                await message.reply_text(f"Gagal menjalankan bot: {str(e)}")
         else:
             await message.reply_text("Gagal membuat instance bot baru")
             
     except Exception as e:
+        print(f"Error in clone_bot: {str(e)}")
         await message.reply_text(f"Gagal melakukan clone bot: {str(e)}")
 
 @app.on_message(filters.command("start") & filters.private)
