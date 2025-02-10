@@ -11,9 +11,9 @@ load_dotenv()
 api_id = os.getenv("API_ID")
 api_hash = os.getenv("API_HASH")
 bot_token = os.getenv("BOT_TOKEN")
-group1_id = os.getenv("GROUP1_ID")  # Group 1 ID
-group2_id = os.getenv("GROUP2_ID")  # Group 2 ID
-group3_id = os.getenv("GROUP3_ID")  # Group 3 ID
+group1_id = int(os.getenv("GROUP1_ID"))  # Group 1 ID
+group2_id = int(os.getenv("GROUP2_ID"))  # Group 2 ID 
+group3_id = int(os.getenv("GROUP3_ID"))  # Group 3 ID
 group1_link = os.getenv("GROUP1_LINK")  # Group 1 Link
 group2_link = os.getenv("GROUP2_LINK")  # Group 2 Link
 group3_link = os.getenv("GROUP3_LINK")  # Group 3 Link
@@ -147,7 +147,15 @@ async def on_group_selection(client, callback_query):
             await callback_query.message.reply_text("Grup tidak valid. Silakan coba lagi.")
             return
             
-        sent = await app.send_message(int(group_id), original_message.text)
+        # Make sure bot is member of the group first
+        try:
+            await app.get_chat(group_id)
+        except Exception as e:
+            await callback_query.message.reply_text("Bot belum menjadi admin di grup yang dipilih. Silakan hubungi admin.")
+            print(f"Error accessing group {group_id}: {str(e)}")
+            return
+            
+        sent = await app.send_message(group_id, original_message.text)
         
         group_links = {
             "group1": group1_link,
@@ -166,7 +174,7 @@ async def on_group_selection(client, callback_query):
         
     except Exception as e:
         print(f"Error in on_group_selection: {str(e)}")
-        await callback_query.message.reply_text(f"Gagal mengirim menfess: {str(e)}")
+        await callback_query.message.reply_text("Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup yang dipilih.")
 
 print("\n\nBOT TELAH AKTIF!!! @GARZPROJECT")
 app.run()
