@@ -61,8 +61,7 @@ async def start_command(client, message):
             file.write(f"{user_id}\n")
     
     await message.reply_text(start_message.format(tags), 
-                             reply_markup=keyboard,
-                             parse_mode="Markdown")
+                             reply_markup=keyboard)
 
 # Perintah Ping - hanya untuk owner
 @app.on_message(filters.command(["ping"]) & filters.private)
@@ -150,7 +149,6 @@ async def on_group_selection(client, callback_query):
         ])
         
         await callback_query.message.reply_text("**Menfess Berhasil Diposting!!**",
-                                                parse_mode="Markdown",
                                                 reply_markup=keyboard)
         await add_to_cooldown(user_id)
         
