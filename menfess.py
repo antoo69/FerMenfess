@@ -116,19 +116,22 @@ async def handle_menfess(client, message):
     
     # Pilihan grup untuk menfess
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Group 1", callback_data="group1"),
-         InlineKeyboardButton("Group 2", callback_data="group2"),
-         InlineKeyboardButton("Group 3", callback_data="group3")]
+        [InlineKeyboardButton("Group 1", callback_data=f"group1:{message.id}"),
+         InlineKeyboardButton("Group 2", callback_data=f"group2:{message.id}"),
+         InlineKeyboardButton("Group 3", callback_data=f"group3:{message.id}")]
     ])
     
     await message.reply_text("Pilih grup untuk mengirim menfess:", reply_markup=keyboard)
 
-@app.on_callback_query(filters.regex(r"group[1-3]"))
+@app.on_callback_query(filters.regex(r"group[1-3]:\d+"))
 async def on_group_selection(client, callback_query):
     try:
         user_id = callback_query.from_user.id
-        selected_group = callback_query.data
-        original_message = callback_query.message.reply_to_message
+        selected_group, message_id = callback_query.data.split(":")
+        message_id = int(message_id)
+        
+        # Get the original message using message_id
+        original_message = await app.get_messages(user_id, message_id)
         
         if not original_message or not original_message.text:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
