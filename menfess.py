@@ -23,19 +23,32 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 cooldown_users = {}  # Dict to store cooldown users per group
 menfess_groups = {}  # Store group IDs and links
 user_ids = set()  # Store user IDs for broadcast
-start_message = '''
+start_message = start_message = '''
 Selamat Datang Di **Ferdi Menfes Bot**
 
-Silahkan tambahkan bot ini ke group anda maka bot ini akan otomatis aktif
-Jika anda bergabung dengan group yang sama dengan bot ini, maka anda mendapati tombol untuk mengirim menfes ke group yang sama denganbot ini dan anda juga bisa mengirim menfes ke group tersebut 
+🔰 Cara Penggunaan Bot:
+• Tambahkan bot ini ke grup/channel Anda
+• Bot akan otomatis aktif setelah ditambahkan
+• Anda dapat mengirim menfess ke grup/channel yang sama dengan bot
 
-Silahkan kirim pesan teks/foto/video/gif/stiker.
+📝 Jenis Pesan yang Didukung:
+• Teks
+• Foto 
+• Video
+• GIF
+• Stiker
+• Pesan Suara (Tanpa Limit)
 
-Note: Bot menerima pesan teks, foto, video, gif dan stiker, serta pesan suara tanpa limit.
-      Bot bisa juga di pakai untuk channel bukan hanya di group saja.
-      Untuk channel hanya admin dari channel tersebut yang bisa mengirim menfes untuk channel tersebut.
-      Tidak ada biaya apapun dalam memakai bot ini. 
+ℹ️ Informasi Tambahan:
+• Bot dapat digunakan di grup dan channel
+• Untuk channel, hanya admin yang dapat mengirim menfess
+• Bot ini GRATIS tanpa biaya apapun
+
+• Info bot lain bisa kunjungi @Galerifsyrl
+
+Silakan mulai mengirim pesan menfess Anda!
 '''
+
 
 # Store message references
 message_refs = {}
