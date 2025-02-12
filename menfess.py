@@ -128,13 +128,6 @@ async def handle_chat_member_updated(client, chat_member_updated):
         except Exception as e:
             print(f"Error handling new chat member: {str(e)}")
 
-@app.on_message(filters.command("ping") & filters.private)
-async def ping_command(client, message):
-    start = time.time()
-    reply = await message.reply_text("Pong!")
-    end = time.time()
-    await reply.edit_text(f"Pong! `{round((end-start)*1000)}ms`")
-
 @app.on_message(filters.command("broadcast") & filters.private)
 async def broadcast_command(client, message):
     if not is_owner(message.from_user.id):
