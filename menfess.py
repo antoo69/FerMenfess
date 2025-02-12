@@ -128,32 +128,85 @@ async def is_channel_admin(client, user_id, chat_id):
 async def handle_chat_member_updated(client, chat_member_updated):
     chat = chat_member_updated.chat
     new_member = chat_member_updated.new_chat_member
-    
+    old_member = chat_member_updated.old_chat_member
+
+    # Jika bot ditambahkan ke grup
     if new_member and new_member.user.id == app.me.id:
-        # Bot was added to a group/channel
         try:
             chat_info = await client.get_chat(chat.id)
-            if chat_info.type in [ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL]:
-                # Get invite link
+            chat_type = str(chat_info.type)
+
+            # Coba buat tautan undangan (jika bot admin)
+            invite_link = None
+            try:
                 invite_link = await chat_info.export_invite_link()
-                
-                # Store group info
-                menfess_groups[str(chat.id)] = {
-                    'id': chat.id,
-                    'title': chat.title,
-                    'link': invite_link,
-                    'type': str(chat_info.type)  # Store chat type
-                }
-                
-                # Save to group-specific database
-                os.makedirs(f"data/{chat.id}", exist_ok=True)
-                with open(f"data/{chat.id}/group_info.json", "w") as f:
-                    json.dump(menfess_groups[str(chat.id)], f)
-                    
-                print(f"Bot added to {chat.title} ({chat.id})")
-                
+            except:
+                invite_link = "🔒 Tidak ada akses untuk membuat tautan."
+
+            # Simpan informasi grup
+            menfess_groups[str(chat.id)] = {
+                'id': chat.id,
+                'title': chat.title,
+                'link': invite_link,
+                'type': chat_type
+            }
+
+            # Simpan ke database grup
+            os.makedirs(f"data/{chat.id}", exist_ok=True)
+            with open(f"data/{chat.id}/group_info.json", "w") as f:
+                json.dump(menfess_groups[str(chat.id)], f)
+
+            # Kirim notifikasi ke owner
+            owner_message = f"""
+📢 **BOT DITAMBAHKAN KE GRUP** 📢
+👥 **Nama Grup:** {chat.title}
+🆔 **ID Grup:** `{chat.id}`
+🔗 **Tautan:** {invite_link}
+📌 **Tipe:** {chat_type}
+"""
+            await client.send_message(owner_id, owner_message)
+
+            # Kirim pesan sambutan ke grup
+            welcome_message = f"""
+📢 **Halo, Saya Menfes Multi Group Bot!** 📢
+🔹 Saya bisa membantu Anda mengirim pesan anonim ke beberapa grup sekaligus.
+🔹 **Cara Penggunaan:**
+   1️⃣ Tambahkan saya sebagai admin grup.
+   2️⃣ Kirim pesan ke bot ini di chat pribadi.
+   3️⃣ Pilih grup tujuan dan pesan akan dikirim secara anonim!
+
+🔹Info bot lain silahkan kunjungi @Galerifsyrl
+
+🚀 **Tambahkan saya ke lebih banyak grup untuk menikmati fitur multi-group!**
+"""
+            await client.send_message(chat.id, welcome_message)
+
+            print(f"Bot berhasil bergabung dengan {chat.title} ({chat.id})")
+
         except Exception as e:
-            print(f"Error handling new chat member: {str(e)}")
+            print(f"Error saat bot ditambahkan ke grup: {str(e)}")
+
+    # Jika bot dikeluarkan dari grup
+    elif old_member and old_member.user.id == app.me.id:
+        try:
+            # Hapus grup dari database
+            if str(chat.id) in menfess_groups:
+                del menfess_groups[str(chat.id)]
+
+            # Kirim notifikasi ke owner
+            owner_message = f"""
+⚠️ **BOT DIKELUARKAN DARI GRUP** ⚠️
+👥 **Nama Grup:** {chat.title}
+🆔 **ID Grup:** `{chat.id}`
+📌 **Tipe:** {str(chat.type)}
+"""
+            await client.send_message(owner_id, owner_message)
+
+            print(f"Bot dikeluarkan dari {chat.title} ({chat.id})")
+
+        except Exception as e:
+            print(f"Error saat bot dikeluarkan dari grup: {str(e)}")
+
 
 @app.on_message(filters.command("broadcast") & filters.private)
 async def broadcast_command(client, message):
@@ -210,8 +263,18 @@ async def start_command(client, message):
 
 @app.on_message(filters.command("ping") & (filters.private | filters.group))
 async def ping_pong(client: Client, message: Message):
+    """Menangani perintah /ping untuk mengukur ping dan uptime bot."""
+    
+    # Abaikan pesan dari bot sendiri
     if message.from_user and message.from_user.is_bot:
-        return  # Abaikan jika pesan dikirim oleh bot sendiri
+        return  
+
+    # Cegah bot merespons /ping saat baru masuk ke grup dalam 30 detik terakhir
+    chat_id = str(message.chat.id)
+    if chat_id in menfess_groups:
+        last_join_time = menfess_groups[chat_id].get("join_time", 0)
+        if time() - last_join_time < 30:  # Jika bot baru masuk dalam 30 detik terakhir
+            return
 
     start = time()
     current_time = datetime.utcnow()
