@@ -208,9 +208,11 @@ async def start_command(client, message):
     user_ids.add(message.from_user.id)
     await message.reply_text(start_message)
 
-@app.on_message(filters.command("ping") & filters.private | filters.group)
+@app.on_message(filters.command("ping") & (filters.private | filters.group))
 async def ping_pong(client: Client, message: Message):
-    """Menangani perintah /ping untuk mengukur ping dan uptime bot."""
+    if message.from_user and message.from_user.is_bot:
+        return  # Abaikan jika pesan dikirim oleh bot sendiri
+
     start = time()
     current_time = datetime.utcnow()
     uptime_sec = (current_time - START_TIME_UTC).total_seconds()
