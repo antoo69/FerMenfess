@@ -124,11 +124,14 @@ async def is_channel_admin(client, user_id, chat_id):
     except:
         return False
 
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 @app.on_chat_member_updated()
 async def handle_chat_member_updated(client, chat_member_updated):
     chat = chat_member_updated.chat
     new_member = chat_member_updated.new_chat_member
     old_member = chat_member_updated.old_chat_member
+    action_by = chat_member_updated.from_user  # Orang yang menambahkan/mengeluarkan bot
 
     # Jika bot ditambahkan ke grup
     if new_member and new_member.user.id == app.me.id:
@@ -163,23 +166,35 @@ async def handle_chat_member_updated(client, chat_member_updated):
 🆔 **ID Grup:** `{chat.id}`
 🔗 **Tautan:** {invite_link}
 📌 **Tipe:** {chat_type}
+👤 **Ditambahkan oleh:** [{action_by.first_name}](tg://user?id={action_by.id})
 """
-            await client.send_message(owner_id, owner_message)
 
-            # Kirim pesan sambutan ke grup
+            owner_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(f"👤 Profil {action_by.first_name}", url=f"tg://user?id={action_by.id}")],
+                [InlineKeyboardButton("🔗 Buka Grup", url=invite_link)] if invite_link != "🔒 Tidak ada akses untuk membuat tautan." else []
+            ])
+
+            await client.send_message(owner_id, owner_message, reply_markup=owner_keyboard)
+
+            # Kirim pesan sambutan ke grup dengan button
             welcome_message = f"""
-📢 **Halo, Saya Menfes Multi Group Bot!** 📢
+📢 **Halo, Saya Bot Menfes Multi Group !** 📢
 🔹 Saya bisa membantu Anda mengirim pesan anonim ke beberapa grup sekaligus.
 🔹 **Cara Penggunaan:**
    1️⃣ Tambahkan saya sebagai admin grup.
    2️⃣ Kirim pesan ke bot ini di chat pribadi.
    3️⃣ Pilih grup tujuan dan pesan akan dikirim secara anonim!
 
-🔹Info bot lain silahkan kunjungi @Galerifsyrl
+🔹Info bot lain silahkan kunjungi Store Kami
 
 🚀 **Tambahkan saya ke lebih banyak grup untuk menikmati fitur multi-group!**
 """
-            await client.send_message(chat.id, welcome_message)
+            group_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📝 Kirim Pesan Anonim", url="https://t.me/testmenfes_bot)],
+                [InlineKeyboardButton("🛒 Store", url="https://t.me/Galerifsyrl")]
+            ])
+
+            await client.send_message(chat.id, welcome_message, reply_markup=group_keyboard)
 
             print(f"Bot berhasil bergabung dengan {chat.title} ({chat.id})")
 
@@ -193,19 +208,26 @@ async def handle_chat_member_updated(client, chat_member_updated):
             if str(chat.id) in menfess_groups:
                 del menfess_groups[str(chat.id)]
 
-            # Kirim notifikasi ke owner
+            # Kirim notifikasi ke owner dengan siapa yang mengeluarkan bot
             owner_message = f"""
 ⚠️ **BOT DIKELUARKAN DARI GRUP** ⚠️
 👥 **Nama Grup:** {chat.title}
 🆔 **ID Grup:** `{chat.id}`
 📌 **Tipe:** {str(chat.type)}
+👤 **Dikeluarkan oleh:** [{action_by.first_name}](tg://user?id={action_by.id})
 """
-            await client.send_message(owner_id, owner_message)
 
-            print(f"Bot dikeluarkan dari {chat.title} ({chat.id})")
+            owner_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton(f"👤 Profil {action_by.first_name}", url=f"tg://user?id={action_by.id}")]
+            ])
+
+            await client.send_message(owner_id, owner_message, reply_markup=owner_keyboard)
+
+            print(f"Bot dikeluarkan dari {chat.title} ({chat.id}) oleh {action_by.first_name}")
 
         except Exception as e:
             print(f"Error saat bot dikeluarkan dari grup: {str(e)}")
+
 
 
 @app.on_message(filters.command("broadcast") & filters.private)
