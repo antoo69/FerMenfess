@@ -8,6 +8,19 @@ from pyrogram.enums import ChatType, ChatMemberStatus
 import time
 
 load_dotenv()
+# Waktu mulai bot dalam UTC dan WIB
+START_TIME_UTC = datetime.utcnow()
+START_TIME_WIB = START_TIME_UTC + timedelta(hours=7)
+START_TIME_WIB_ISO = START_TIME_WIB.replace(microsecond=0).isoformat()
+
+# Konstanta durasi waktu
+TIME_DURATION_UNITS = (
+    ("week", 60 * 60 * 24 * 7),
+    ("day", 60**2 * 24),
+    ("hour", 60**2),
+    ("min", 60),
+    ("sec", 1),
+)
 
 # Bot configuration
 api_id = os.getenv("API_ID")
@@ -18,6 +31,17 @@ delay_time = int(os.getenv("DELAY"))  # Delay time
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+
+async def _human_time_duration(seconds):
+    """Mengonversi detik ke format durasi waktu yang lebih mudah dibaca."""
+    if seconds == 0:
+        return "inf"
+    parts = []
+    for unit, div in TIME_DURATION_UNITS:
+        amount, seconds = divmod(int(seconds), div)
+        if amount > 0:
+            parts.append(f'{amount} {unit}{"" if amount == 1 else "s"}')
+    return ", ".join(parts)
 
 # Store data
 cooldown_users = {}  # Dict to store cooldown users per group
@@ -180,6 +204,39 @@ async def broadcast_command(client, message):
 async def start_command(client, message):
     user_ids.add(message.from_user.id)
     await message.reply_text(start_message)
+
+@app.on_message(filters.command("ping") & filters.private)
+async def ping_pong(client: Client, message: Message):
+    """Menangani perintah /ping untuk mengukur ping dan uptime bot."""
+    start = time()
+    current_time = datetime.utcnow()
+    uptime_sec = (current_time - START_TIME_UTC).total_seconds()
+    uptime = await _human_time_duration(int(uptime_sec))
+    
+    m_reply = await message.reply_text("Pinging...")
+    delta_ping = time() - start
+    
+    await m_reply.edit(
+        "**PONG!!** 🏓\n"
+        f"**• Pinger -** `{delta_ping * 1000:.3f} ms`\n"
+        f"**• Uptime -** `{uptime}`"
+    )
+
+@app.on_message(filters.command("time") & filters.private)
+async def get_uptime(client: Client, message: Message):
+    """Menangani perintah /time untuk menampilkan uptime dan waktu mulai bot."""
+    current_time_utc = datetime.utcnow()
+    current_time_wib = current_time_utc + timedelta(hours=7)
+    uptime_sec = (current_time_utc - START_TIME_UTC).total_seconds()
+    uptime = await _human_time_duration(int(uptime_sec))
+    
+    await message.reply_text(
+        "🤖 **Bot Status:**\n"
+        f"• **Uptime:** `{uptime}`\n"
+        f"• **Start Time:** `{START_TIME_WIB_ISO}` (WIB)\n"
+        f"• **Current UTC Time:** `{current_time_utc.replace(microsecond=0)}`\n"
+        f"• **Current WIB Time:** `{current_time_wib.replace(microsecond=0)}`\n"
+    )
 
 @app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
