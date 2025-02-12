@@ -190,7 +190,7 @@ async def handle_chat_member_updated(client, chat_member_updated):
 🚀 **Tambahkan saya ke lebih banyak grup untuk menikmati fitur multi-group!**
 """
             group_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("📝 Kirim Pesan Anonim", url="https://t.me/testmenfes_bot)],
+                [InlineKeyboardButton("📝 Kirim Pesan Anonim", url="https://t.me/testmenfes_bot")],
                 [InlineKeyboardButton("🛒 Store", url="https://t.me/Galerifsyrl")]
             ])
 
