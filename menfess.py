@@ -290,22 +290,6 @@ async def ping_pong(client: Client, message: Message):
         f"**• Uptime -** `{uptime}`"
     )
 
-@app.on_message(filters.command("time") & filters.private | filters.group  )
-async def get_uptime(client: Client, message: Message):
-    """Menangani perintah /time untuk menampilkan uptime dan waktu mulai bot."""
-    current_time_utc = datetime.utcnow()
-    current_time_wib = current_time_utc + timedelta(hours=7)
-    uptime_sec = (current_time_utc - START_TIME_UTC).total_seconds()
-    uptime = await _human_time_duration(int(uptime_sec))
-    
-    await message.reply_text(
-        "🤖 **Bot Status:**\n"
-        f"• **Uptime:** `{uptime}`\n"
-        f"• **Start Time:** `{START_TIME_WIB_ISO}` (WIB)\n"
-        f"• **Current UTC Time:** `{current_time_utc.replace(microsecond=0)}`\n"
-        f"• **Current WIB Time:** `{current_time_wib.replace(microsecond=0)}`\n"
-    )
-
 @app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
