@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import asyncio
 from pyrogram.enums import ChatType, ChatMemberStatus
 import time
+from time import time
+from datetime import datetime, timedelta
 
 load_dotenv()
 # Waktu mulai bot dalam UTC dan WIB
