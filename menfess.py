@@ -1,3 +1,4 @@
+from pyrogram.types import Message  # <-- Tambahkan ini
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import os
