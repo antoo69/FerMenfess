@@ -365,7 +365,7 @@ def detect_menfess(client, message: Message):
     notif_text = f"\ud83d\udce9 Menfess baru!\n\ud83d\udc64 Pengirim: {sender_id}\n\ud83d\udccc Grup: {message.chat.title} ({chat_id})"
 
     # Kirim ke owner bot
-    client.send_message(BOT_OWNER_ID, notif_text)
+    client.send_message(owner_id, notif_text)
     
     # Kirim ke admin yang menambahkan bot jika ada
     if admin_id:
@@ -411,7 +411,7 @@ def on_bot_added(client, message: Message):
         chat_id = message.chat.id
         add_group_to_db(chat_id, admin_id)
         create_backup()
-        client.send_document(BOT_OWNER_ID, BACKUP_ZIP, caption="Backup database terbaru")
+        client.send_document(owner_id, BACKUP_ZIP, caption="Backup database terbaru")
 
 # Perintah restore
 @app.on_message(filters.command("restore") & filters.user(owner_id))
