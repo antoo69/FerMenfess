@@ -53,19 +53,22 @@ def create_database():
     conn.commit()
     conn.close()
 
-# Fungsi untuk menambahkan grup baru ke database
 def add_group_to_db(chat_id: int, admin_id: int):
-    conn = sqlite3.connect(database_file)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("REPLACE INTO groups (chat_id, admin_id) VALUES (?, ?)", (chat_id, admin_id))
     conn.commit()
     conn.close()
 
+    # Setelah grup ditambahkan, buat backup dan kirim ke owner
+    print("Group ditambahkan ke database. Membuat backup zip...")
+    create_backup_and_send_to_owner()
+
 # Fungsi untuk membuat koneksi database baru
 def get_db_connection():
     return sqlite3.connect(database_file)
 
-# Fungsi untuk menangani anggota baru yang menambahkan bot ke grup
+# Event handler ketika bot ditambahkan ke grup
 @app.on_message(filters.new_chat_members)
 def handle_new_chat_member(client: Client, message: Message):
     """Simpan admin yang menambahkan bot ke grup"""
@@ -73,12 +76,15 @@ def handle_new_chat_member(client: Client, message: Message):
         if member.id == client.me.id:  # Jika bot yang ditambahkan ke grup
             admin_id = message.from_user.id  # ID admin yang menambahkan bot
             group_id = message.chat.id  # ID grup tempat bot ditambahkan
-            admin_data[group_id] = admin_id  # Simpan admin di admin_data
 
-            # Kirim pesan ke admin yang menambahkan bot
+            # Tambahkan grup ke database
+            print(f"Bot ditambahkan ke grup {group_id} oleh admin {admin_id}.")
+            add_group_to_db(group_id, admin_id)
+
+            # Kirim pesan konfirmasi ke admin
             client.send_message(
                 chat_id=admin_id,
-                text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
+                text="Kamu telah menambahkan bot menfes ke grup. Kamu akan menerima notifikasi menfess dari user yang mengirim menfes kegrou anda."
             )
 
 # Fungsi untuk menambahkan grup ke database
@@ -103,12 +109,16 @@ def get_group_admin(chat_id: int):
 
 # Fungsi untuk membuat zip backup dari database
 def create_backup_and_send_to_owner():
-    # Buat file zip dari database
-    with zipfile.ZipFile(backup_zip, 'w') as zipf:
-        zipf.write(database_file, os.path.basename(database_file))
+    try:
+        # Buat file zip dari database
+        with zipfile.ZipFile(backup_zip, 'w') as zipf:
+            zipf.write(database_file, os.path.basename(database_file))
+        print("Backup zip berhasil dibuat.")
 
-    # Kirim file zip ke owner
-    send_backup_to_owner()
+        # Kirim file zip ke owner
+        send_backup_to_owner()
+    except Exception as e:
+        print(f"Error saat membuat backup: {e}")
 
 # Fungsi untuk mengirim backup zip ke akun owner
 def send_backup_to_owner():
