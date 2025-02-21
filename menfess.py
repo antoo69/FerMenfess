@@ -40,7 +40,7 @@ backup_zip =  os.getenv("BACKUP_ZIP")
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 # Inisialisasi database
-conn = sqlite3.connect(DATABASE_FILE)
+conn = sqlite3.connect(database_file)
 cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS groups (
