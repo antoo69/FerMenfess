@@ -68,24 +68,21 @@ def add_group_to_db(chat_id: int, admin_id: int):
 def get_db_connection():
     return sqlite3.connect(database_file)
 
-# Event handler ketika bot ditambahkan ke grup
 @app.on_message(filters.new_chat_members)
 def handle_new_chat_member(client: Client, message: Message):
     """Simpan admin yang menambahkan bot ke grup"""
     for member in message.new_chat_members:
-        if member.id == client.me.id:  # Jika bot yang ditambahkan ke grup
-            admin_id = message.from_user.id  # ID admin yang menambahkan bot
-            group_id = message.chat.id  # ID grup tempat bot ditambahkan
+        if member.is_bot and member.id == client.me.id:  # Jika bot yang ditambahkan
+            admin_id = message.from_user.id  # User yang menambahkan bot
+            group_id = message.chat.id  # ID grup
+            admin_data[group_id] = admin_id  # Simpan admin dan grup
 
-            # Tambahkan grup ke database
-            print(f"Bot ditambahkan ke grup {group_id} oleh admin {admin_id}.")
-            add_group_to_db(group_id, admin_id)
-
-            # Kirim pesan konfirmasi ke admin
+            # Kirim pesan ke admin yang menambahkan bot
             client.send_message(
                 chat_id=admin_id,
-                text="Kamu telah menambahkan bot menfes ke grup. Kamu akan menerima notifikasi menfess dari user yang mengirim menfes kegrou anda."
+                text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
             )
+            print(f"Admin yang menambahkan bot: {admin_id}, di grup: {group_id}")
 
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id: int, admin_id: int):
@@ -465,14 +462,91 @@ def on_bot_added(client, message: Message):
         create_backup()
         client.send_document(owner_id, BACKUP_ZIP, caption="Backup database terbaru")
 
-# Perintah restore
-@app.on_message(filters.command("restore") & filters.user(owner_id))
-def restore_db(client, message: Message):
-    if restore_backup():
-        message.reply_text("\u2705 Database berhasil dipulihkan!")
-    else:
-        message.reply_text("\u274c Tidak ada backup yang ditemukan!")
+@app.on_message(filters.private & filters.command("backup"))
+def backup_database(client: Client, message: Message):
+    if message.chat.id == owner_id:
+        try:
+            # Buat file zip untuk backup
+            with zipfile.ZipFile(backup_zip, 'w') as zipf:
+                if os.path.exists(database_file):
+                    zipf.write(database_file)
+                else:
+                    client.send_message(
+                        chat_id=owner_id,
+                        text="File database tidak ditemukan."
+                    )
+                    return
 
+            # Kirim file zip ke owner
+            client.send_document(
+                chat_id=owner_id,
+                document=backup_zip,
+                caption="Berikut adalah file backup dalam format ZIP."
+            )
+
+            # Hapus file zip setelah dikirim
+            if os.path.exists(backup_zip):
+                os.remove(backup_zip)
+
+        except Exception as e:
+            client.send_message(
+                chat_id=owner_id,
+                text=f"Gagal melakukan backup: {str(e)}"
+            )
+            print(f"Error saat melakukan backup: {str(e)}")
+    else:
+        # Hanya owner yang bisa melakukan backup
+        client.send_message(
+            chat_id=message.chat.id,
+            text="Perintah /backup hanya bisa dilakukan oleh owner bot."
+        )
+
+# Command handler untuk restore database dari zip yang direply
+@app.on_message(filters.private & filters.command("restore"))
+def restore_database(client: Client, message: Message):
+    if message.chat.id == owner_id:
+        if message.reply_to_message and message.reply_to_message.document:
+            file_id = message.reply_to_message.document.file_id
+            file_name = message.reply_to_message.document.file_name
+
+            if file_name.endswith(".zip"):
+                try:
+                    # Unduh file zip yang di-reply
+                    file_path = client.download_media(file_id, file_name=backup_zip)
+
+                    # Ekstrak file zip dan ganti database
+                    with zipfile.ZipFile(file_path, 'r') as zipf:
+                        zipf.extractall()
+
+                    # Hapus file zip setelah restore selesai
+                    if os.path.exists(backup_zip):
+                        os.remove(backup_zip)
+
+                    client.send_message(
+                        chat_id=owner_id,
+                        text="Database berhasil dipulihkan dari file zip."
+                    )
+                except Exception as e:
+                    client.send_message(
+                        chat_id=owner_id,
+                        text=f"Gagal memulihkan database: {str(e)}"
+                    )
+                    print(f"Error saat restore: {str(e)}")
+            else:
+                client.send_message(
+                    chat_id=owner_id,
+                    text="Harap reply file dengan format .zip untuk restore."
+                )
+        else:
+            client.send_message(
+                chat_id=owner_id,
+                text="Harap reply file zip yang berisi database untuk melakukan restore."
+            )
+    else:
+        client.send_message(
+            chat_id=message.chat.id,
+            text="Perintah /restore hanya bisa dilakukan oleh owner bot."
+        )
 @app.on_callback_query()
 async def on_group_selection(client, callback_query):
     try:
