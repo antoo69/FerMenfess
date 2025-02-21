@@ -70,19 +70,21 @@ def get_db_connection():
 
 @app.on_message(filters.new_chat_members)
 def handle_new_chat_member(client: Client, message: Message):
-    """Simpan admin yang menambahkan bot ke grup"""
+    """Simpan admin yang menambahkan bot ke grup dan kirim file backup ke owner"""
     for member in message.new_chat_members:
-        if member.is_bot and member.id == client.me.id:  # Jika bot yang ditambahkan
-            admin_id = message.from_user.id  # User yang menambahkan bot
+        if member.is_bot and member.id == client.me.id:
+            admin_id = message.from_user.id  # Admin yang menambahkan bot
             group_id = message.chat.id  # ID grup
-            admin_data[group_id] = admin_id  # Simpan admin dan grup
 
             # Kirim pesan ke admin yang menambahkan bot
             client.send_message(
                 chat_id=admin_id,
                 text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
             )
-            print(f"Admin yang menambahkan bot: {admin_id}, di grup: {group_id}")
+
+            # Kirim file backup berupa ZIP ke owner bot
+            zip_file = create_backup()
+            client.send_document(chat_id=owner_id, document=zip_file, caption="Backup file grup baru.")
 
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id: int, admin_id: int):
@@ -104,7 +106,6 @@ def get_group_admin(chat_id: int):
     conn.close()
     return result[0] if result else None
 
-# Fungsi untuk membuat zip backup dari database
 def create_backup_and_send_to_owner():
     try:
         # Buat file zip dari database
@@ -120,23 +121,31 @@ def create_backup_and_send_to_owner():
 # Fungsi untuk mengirim backup zip ke akun owner
 def send_backup_to_owner():
     try:
-        # Kirim file backup ke owner
-        app.send_document(
-            chat_id=owner_id,
-            document=backup_zip,
-            caption="Backup terbaru setelah grup baru ditambahkan."
-        )
+        # Gunakan `app` untuk mengirim file ke owner
+        with app:
+            app.send_document(
+                chat_id=owner_id,
+                document=backup_zip,
+                caption="Backup terbaru setelah grup baru ditambahkan."
+            )
         print("Backup terkirim ke owner.")
     except Exception as e:
         print(f"Gagal mengirim backup: {e}")
 
 # Fungsi untuk restore database
 def restore_backup():
-    if os.path.exists(backup_zip):
-        with zipfile.ZipFile(backup_zip, 'r') as zipf:
-            zipf.extract(database_file)
-        return True
-    return False
+    try:
+        if os.path.exists(backup_zip):
+            with zipfile.ZipFile(backup_zip, 'r') as zipf:
+                zipf.extract(os.path.basename(database_file))  # Extract the database
+            print("Restore berhasil.")
+            return True
+        else:
+            print("File backup tidak ditemukan.")
+            return False
+    except Exception as e:
+        print(f"Error saat restore: {e}")
+        return False
 
 # Fungsi untuk menghitung durasi waktu dalam format yang lebih mudah dipahami manusia
 async def _human_time_duration(seconds):
