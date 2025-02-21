@@ -68,24 +68,6 @@ def add_group_to_db(chat_id: int, admin_id: int):
 def get_db_connection():
     return sqlite3.connect(database_file)
 
-@app.on_message(filters.new_chat_members)
-def handle_new_chat_member(client: Client, message: Message):
-    """Simpan admin yang menambahkan bot ke grup dan kirim file backup ke owner"""
-    for member in message.new_chat_members:
-        if member.is_bot and member.id == client.me.id:
-            admin_id = message.from_user.id  # Admin yang menambahkan bot
-            group_id = message.chat.id  # ID grup
-
-            # Kirim pesan ke admin yang menambahkan bot
-            client.send_message(
-                chat_id=admin_id,
-                text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
-            )
-
-            # Kirim file backup berupa ZIP ke owner bot
-            zip_file = create_backup_and_send_to_owner()
-            client.send_document(chat_id=owner_id, document=zip_file, caption="Backup file grup baru.")
-
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id: int, admin_id: int):
     conn = get_db_connection()
@@ -106,31 +88,48 @@ def get_group_admin(chat_id: int):
     conn.close()
     return result[0] if result else None
 
-def create_backup_and_send_to_owner():
+def create_backup():
     try:
         # Buat file zip dari database
         with zipfile.ZipFile(backup_zip, 'w') as zipf:
             zipf.write(database_file, os.path.basename(database_file))
         print("Backup zip berhasil dibuat.")
-
-        # Kirim file zip ke owner
-        send_backup_to_owner()
+        return backup_zip  # Mengembalikan file backup
     except Exception as e:
         print(f"Error saat membuat backup: {e}")
+        return None
 
 # Fungsi untuk mengirim backup zip ke akun owner
-def send_backup_to_owner():
+def send_backup_to_owner(zip_file):
     try:
-        # Gunakan `app` untuk mengirim file ke owner
-        with app:
+        if zip_file:
+            # Kirim file backup ke owner
             app.send_document(
                 chat_id=owner_id,
-                document=backup_zip,
+                document=zip_file,
                 caption="Backup terbaru setelah grup baru ditambahkan."
             )
-        print("Backup terkirim ke owner.")
+            print("Backup terkirim ke owner.")
+        else:
+            print("Tidak ada file zip untuk dikirim.")
     except Exception as e:
         print(f"Gagal mengirim backup: {e}")
+
+# Panggil fungsi ini ketika bot ditambahkan ke grup baru
+def handle_new_chat_member(client, message):
+    for member in message.new_chat_members:
+        if member.id == client.me.id:
+            admin_id = message.from_user.id
+            group_id = message.chat.id
+
+            # Simpan admin dan grup ke database
+            add_group_to_db(group_id, admin_id)
+            
+            # Buat backup
+            zip_file = create_backup()
+
+            # Kirim file backup ke owner
+            send_backup_to_owner(zip_file)
 
 # Fungsi untuk restore database
 def restore_backup():
