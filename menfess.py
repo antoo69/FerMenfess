@@ -2,6 +2,8 @@ from pyrogram.types import Message  # <-- Tambahkan ini
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import os
+import sqlite3
+import zipfile
 import json
 from dotenv import load_dotenv
 import asyncio
@@ -31,9 +33,46 @@ api_hash = os.getenv("API_HASH")
 bot_token = os.getenv("BOT_TOKEN")
 owner_id = int(os.getenv("OWNER_ID"))  # Owner ID
 delay_time = int(os.getenv("DELAY"))  # Delay time
+DATABASE_FILE = os.getenv("DATABASE_FILE")
+BACKUP_ZIP =  os.getenv("BACKUP_ZIP")
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+
+# Inisialisasi database
+conn = sqlite3.connect(DATABASE_FILE)
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS groups (
+    chat_id INTEGER PRIMARY KEY,
+    admin_id INTEGER
+)
+""")
+conn.commit()
+
+# Fungsi untuk menambahkan grup ke database
+def add_group_to_db(chat_id: int, admin_id: int):
+    cursor.execute("REPLACE INTO groups (chat_id, admin_id) VALUES (?, ?)", (chat_id, admin_id))
+    conn.commit()
+
+# Fungsi untuk mendapatkan admin yang menambahkan bot
+def get_group_admin(chat_id: int):
+    cursor.execute("SELECT admin_id FROM groups WHERE chat_id = ?", (chat_id,))
+    result = cursor.fetchone()
+    return result[0] if result else None
+
+# Fungsi untuk membuat backup database
+def create_backup():
+    with zipfile.ZipFile(BACKUP_ZIP, 'w') as zipf:
+        zipf.write(DATABASE_FILE)
+
+# Fungsi untuk restore database
+def restore_backup():
+    if os.path.exists(BACKUP_ZIP):
+        with zipfile.ZipFile(BACKUP_ZIP, 'r') as zipf:
+            zipf.extract(DATABASE_FILE)
+        return True
+    return False
 
 async def _human_time_duration(seconds):
     """Mengonversi detik ke format durasi waktu yang lebih mudah dibaca."""
@@ -316,6 +355,22 @@ async def ping_pong(client: Client, message: Message):
         f"**• Uptime -** `{uptime}`"
     )
 
+# Notifikasi menfess untuk owner dan admin grup
+@app.on_message(filters.group & ~filters.bot)
+def detect_menfess(client, message: Message):
+    sender_id = message.from_user.id
+    chat_id = message.chat.id
+    admin_id = get_group_admin(chat_id)
+
+    notif_text = f"\ud83d\udce9 Menfess baru!\n\ud83d\udc64 Pengirim: {sender_id}\n\ud83d\udccc Grup: {message.chat.title} ({chat_id})"
+
+    # Kirim ke owner bot
+    client.send_message(BOT_OWNER_ID, notif_text)
+    
+    # Kirim ke admin yang menambahkan bot jika ada
+    if admin_id:
+        client.send_message(admin_id, notif_text)
+
 @app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
@@ -348,6 +403,23 @@ async def handle_private_message(client, message):
     # Store the original message reference
     msg = await message.reply_text("Pilih grup/channel tujuan menfess:", reply_markup=keyboard)
     message_refs[msg.id] = message
+
+@app.on_chat_member_updated()
+def on_bot_added(client, message: Message):
+    if message.new_chat_member and message.new_chat_member.user.id == client.me.id:
+        admin_id = message.from_user.id
+        chat_id = message.chat.id
+        add_group_to_db(chat_id, admin_id)
+        create_backup()
+        client.send_document(BOT_OWNER_ID, BACKUP_ZIP, caption="Backup database terbaru")
+
+# Perintah restore
+@app.on_message(filters.command("restore") & filters.user(BOT_OWNER_ID))
+def restore_db(client, message: Message):
+    if restore_backup():
+        message.reply_text("\u2705 Database berhasil dipulihkan!")
+    else:
+        message.reply_text("\u274c Tidak ada backup yang ditemukan!")
 
 @app.on_callback_query()
 async def on_group_selection(client, callback_query):
