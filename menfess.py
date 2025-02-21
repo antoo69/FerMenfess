@@ -83,7 +83,7 @@ def handle_new_chat_member(client: Client, message: Message):
             )
 
             # Kirim file backup berupa ZIP ke owner bot
-            zip_file = create_backup()
+            zip_file = create_backup_and_send_to_owner()
             client.send_document(chat_id=owner_id, document=zip_file, caption="Backup file grup baru.")
 
 # Fungsi untuk menambahkan grup ke database
