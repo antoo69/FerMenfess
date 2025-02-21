@@ -40,18 +40,23 @@ backup_zip = os.getenv("BACKUP_ZIP")
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
 admin_data = {}
+
 # Fungsi untuk membuat koneksi database baru
 def get_db_connection():
     return sqlite3.connect(database_file)
 
-def handle_new_chat_member(Client: Client, context: CallbackContext):
+# Fungsi untuk menangani anggota baru yang menambahkan bot ke grup
+@app.on_message(filters.new_chat_members)
+def handle_new_chat_member(client: Client, message: Message):
     """Simpan admin yang menambahkan bot ke grup"""
     for member in message.new_chat_members:
-        if member.id == context.bot.id:
-            admin_id = client.message.from_user.id
-            group_id = client.message.chat_id
-            admin_data[group_id] = admin_id
-            context.bot.send_message(
+        if member.id == client.me.id:  # Jika bot yang ditambahkan ke grup
+            admin_id = message.from_user.id  # ID admin yang menambahkan bot
+            group_id = message.chat.id  # ID grup tempat bot ditambahkan
+            admin_data[group_id] = admin_id  # Simpan admin di admin_data
+
+            # Kirim pesan ke admin yang menambahkan bot
+            client.send_message(
                 chat_id=admin_id,
                 text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
             )
