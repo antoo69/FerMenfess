@@ -39,9 +39,22 @@ backup_zip = os.getenv("BACKUP_ZIP")
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
+admin_data = {}
 # Fungsi untuk membuat koneksi database baru
 def get_db_connection():
     return sqlite3.connect(database_file)
+
+def handle_new_chat_member(update: Update, context: CallbackContext):
+    """Simpan admin yang menambahkan bot ke grup"""
+    for member in update.message.new_chat_members:
+        if member.id == context.bot.id:
+            admin_id = update.message.from_user.id
+            group_id = update.message.chat_id
+            admin_data[group_id] = admin_id
+            context.bot.send_message(
+                chat_id=admin_id,
+                text="Kamu telah menambahkan bot menfes ke grup ini. Kamu akan menerima notifikasi menfes."
+            )
 
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id: int, admin_id: int):
@@ -451,11 +464,18 @@ async def on_group_selection(client, callback_query):
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
             
+    try:
+        # Dapatkan pesan asli
+        original_message = message_refs.get(callback_query.message.id)
+        if not original_message:
+            await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
+            return
+        
         try:
-            # Send message to group/channel
+            # Kirim pesan ke grup/channel
             sent = await original_message.copy(group_data['id'])
             
-            # Create permanent message link
+            # Buat link pesan permanen
             chat = await client.get_chat(group_data['id'])
             if chat.username:
                 post_link = f"https://t.me/{chat.username}/{sent.id}"
@@ -471,7 +491,7 @@ async def on_group_selection(client, callback_query):
                 reply_markup=keyboard
             )
             
-            # Send notification to owner with message content
+            # Kirim notifikasi kepada owner bot dengan isi pesan
             user = callback_query.from_user
             message_text = original_message.text if original_message.text else "[Media Message]"
             owner_notification = f"""
@@ -484,16 +504,28 @@ Message: {message_text}
 """
             await client.send_message(owner_id, owner_notification)
             
-            # If original message contains media, forward it to owner
+            # Jika pesan asli mengandung media, teruskan juga ke owner bot
             if original_message.media:
                 await original_message.copy(owner_id)
+
+            # Kirim notifikasi kepada admin yang menambahkan bot
+            group_id = group_data['id']
+            admin_who_added_bot_id = admin_data.get(group_id)
+            if admin_who_added_bot_id:
+                await client.send_message(admin_who_added_bot_id, owner_notification)
+                
+                # Jika pesan mengandung media, teruskan juga ke admin
+                if original_message.media:
+                    await original_message.copy(admin_who_added_bot_id)
+            else:
+                print(f"Admin yang menambahkan bot tidak ditemukan untuk grup {group_id}")
             
-            # Add user to cooldown
-            await add_to_cooldown(group_id, user_id)
+            # Tambahkan pengguna ke cooldown
+            await add_to_cooldown(group_id, user.id)
             
-            # Clean up message reference
+            # Bersihkan referensi pesan
             del message_refs[callback_query.message.id]
-            
+        
         except Exception as e:
             print(f"Error sending menfess: {str(e)}")
             await callback_query.message.reply_text(
