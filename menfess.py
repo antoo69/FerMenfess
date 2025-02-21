@@ -355,22 +355,6 @@ async def ping_pong(client: Client, message: Message):
         f"**• Uptime -** `{uptime}`"
     )
 
-# Notifikasi menfess untuk owner dan admin grup
-@app.on_message(filters.group & ~filters.bot)
-def detect_menfess(client, message: Message):
-    sender_id = message.from_user.id
-    chat_id = message.chat.id
-    admin_id = get_group_admin(chat_id)
-
-    notif_text = f"\ud83d\udce9 Menfess baru!\n\ud83d\udc64 Pengirim: {sender_id}\n\ud83d\udccc Grup: {message.chat.title} ({chat_id})"
-
-    # Kirim ke owner bot
-    client.send_message(owner_id, notif_text)
-    
-    # Kirim ke admin yang menambahkan bot jika ada
-    if admin_id:
-        client.send_message(admin_id, notif_text)
-
 @app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
