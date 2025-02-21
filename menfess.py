@@ -423,18 +423,18 @@ async def on_group_selection(client, callback_query):
     try:
         user_id = callback_query.from_user.id
         data = callback_query.data
-        
+
         if not data.startswith("send_menfess_"):
             return
-            
+
         group_id = data.replace("send_menfess_", "")
-        
+
         # Check if group/channel exists
         group_data = menfess_groups.get(group_id)
         if not group_data:
             await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
             return
-            
+
         # Check permissions based on chat type
         if group_data.get('type') == str(ChatType.CHANNEL):
             is_authorized = await is_channel_admin(client, user_id, group_data['id'])
@@ -452,41 +452,42 @@ async def on_group_selection(client, callback_query):
                     "mohon bergabung ke dalam group yang ingin anda kirimkan menfes agar bisa memakai bot ini"
                 )
                 return
-        
+
         # Check if user is in cooldown
         if group_id in cooldown_users and user_id in cooldown_users[group_id]:
             await callback_query.message.reply_text(f"Mohon tunggu {delay_time} detik sebelum mengirim menfess lagi.")
             return
-            
+
         # Get the original message
         original_message = message_refs.get(callback_query.message.id)
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
- try:
-    # Kirim pesan ke grup/channel
-    sent = await original_message.copy(group_data['id'])
 
-    # Buat link pesan permanen
-    chat = await client.get_chat(group_data['id'])
-    if chat.username:
-        post_link = f"https://t.me/{chat.username}/{sent.id}"
-    else:
-        post_link = f"https://t.me/c/{str(group_data['id'])[4:]}/{sent.id}"
+        try:
+            # Kirim pesan ke grup/channel
+            sent = await original_message.copy(group_data['id'])
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Cek Postingan", url=post_link)]
-    ])
+            # Buat link pesan permanen
+            chat = await client.get_chat(group_data['id'])
+            if chat.username:
+                post_link = f"https://t.me/{chat.username}/{sent.id}"
+            else:
+                post_link = f"https://t.me/c/{str(group_data['id'])[4:]}/{sent.id}"
 
-    await callback_query.message.reply_text(
-        "**Menfess Berhasil Diposting!!**",
-        reply_markup=keyboard
-    )
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Cek Postingan", url=post_link)]
+            ])
 
-    # Kirim notifikasi kepada owner dengan isi pesan
-    user = callback_query.from_user
-    message_text = original_message.text if original_message.text else "[Media Message]"
-    owner_notification = f"""
+            await callback_query.message.reply_text(
+                "**Menfess Berhasil Diposting!!**",
+                reply_markup=keyboard
+            )
+
+            # Kirim notifikasi kepada owner dengan isi pesan
+            user = callback_query.from_user
+            message_text = original_message.text if original_message.text else "[Media Message]"
+            owner_notification = f"""
 New Menfess Sent!
 Username: @{user.username if user.username else 'None'}
 Name: {user.first_name} {user.last_name if user.last_name else ''}
@@ -494,39 +495,41 @@ User ID: {user.id}
 Group/Channel: {group_data['title']}
 Message: {message_text}
 """
-    await client.send_message(owner_id, owner_notification)
+            await client.send_message(owner_id, owner_notification)
 
-    # Jika pesan asli mengandung media, forward ke owner bot
-    if original_message.media:
-        await original_message.copy(owner_id)
+            # Jika pesan asli mengandung media, forward ke owner bot
+            if original_message.media:
+                await original_message.copy(owner_id)
 
-    # Kirim notifikasi ke admin yang menambahkan bot
-    group_id = group_data['id']
-    admin_who_added_bot_id = admin_data.get(group_id)
-    if admin_who_added_bot_id:
-        await client.send_message(admin_who_added_bot_id, owner_notification)
+            # Kirim notifikasi ke admin yang menambahkan bot
+            group_id = group_data['id']
+            admin_who_added_bot_id = admin_data.get(group_id)
+            if admin_who_added_bot_id:
+                await client.send_message(admin_who_added_bot_id, owner_notification)
 
-        # Jika pesan berisi media, kirim juga ke admin
-        if original_message.media:
-            await original_message.copy(admin_who_added_bot_id)
-    else:
-        print(f"Admin yang menambahkan bot tidak ditemukan untuk grup {group_id}")
+                # Jika pesan berisi media, kirim juga ke admin
+                if original_message.media:
+                    await original_message.copy(admin_who_added_bot_id)
+            else:
+                print(f"Admin yang menambahkan bot tidak ditemukan untuk grup {group_id}")
 
-    # Tambahkan pengguna ke cooldown
-    await add_to_cooldown(group_id, user.id)
+            # Tambahkan pengguna ke cooldown
+            await add_to_cooldown(group_id, user.id)
 
-    # Bersihkan referensi pesan
-    del message_refs[callback_query.message.id]
+            # Bersihkan referensi pesan
+            del message_refs[callback_query.message.id]
 
-except Exception as e:
-    print(f"Error sending menfess: {str(e)}")
-    await callback_query.message.reply_text(
-        "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
-    )
-finally:
-    # Ini adalah bagian yang akan dijalankan setelah try-except, bahkan jika ada error
-    print("Proses menfess selesai.")
+        except Exception as e:
+            print(f"Error sending menfess: {str(e)}")
+            await callback_query.message.reply_text(
+                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
+            )
+        finally:
+            # Ini adalah bagian yang akan dijalankan setelah try-except, bahkan jika ada error
+            print("Proses menfess selesai.")
 
+    except Exception as e:
+        print(f"Error in on_group_selection: {str(e)}")
 
 print("\n\nBOT TELAH AKTIF!!!")
 app.run()
