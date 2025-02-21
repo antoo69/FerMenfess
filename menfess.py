@@ -34,46 +34,46 @@ bot_token = os.getenv("BOT_TOKEN")
 owner_id = int(os.getenv("OWNER_ID"))  # Owner ID
 delay_time = int(os.getenv("DELAY"))  # Delay time
 database_file = os.getenv("DATABASE_FILE")
-backup_zip =  os.getenv("BACKUP_ZIP")
+backup_zip = os.getenv("BACKUP_ZIP")
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
-# Inisialisasi database
-conn = sqlite3.connect(database_file)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS groups (
-    chat_id INTEGER PRIMARY KEY,
-    admin_id INTEGER
-)
-""")
-conn.commit()
+# Fungsi untuk membuat koneksi database baru
+def get_db_connection():
+    return sqlite3.connect(database_file)
 
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id: int, admin_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("REPLACE INTO groups (chat_id, admin_id) VALUES (?, ?)", (chat_id, admin_id))
     conn.commit()
+    conn.close()
 
 # Fungsi untuk mendapatkan admin yang menambahkan bot
 def get_group_admin(chat_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT admin_id FROM groups WHERE chat_id = ?", (chat_id,))
     result = cursor.fetchone()
+    conn.close()
     return result[0] if result else None
 
 # Fungsi untuk membuat backup database
 def create_backup():
-    with zipfile.ZipFile(BACKUP_ZIP, 'w') as zipf:
-        zipf.write(DATABASE_FILE)
+    with zipfile.ZipFile(backup_zip, 'w') as zipf:
+        zipf.write(database_file)
 
 # Fungsi untuk restore database
 def restore_backup():
-    if os.path.exists(BACKUP_ZIP):
-        with zipfile.ZipFile(BACKUP_ZIP, 'r') as zipf:
-            zipf.extract(DATABASE_FILE)
+    if os.path.exists(backup_zip):
+        with zipfile.ZipFile(backup_zip, 'r') as zipf:
+            zipf.extract(database_file)
         return True
     return False
 
+# Fungsi untuk menghitung durasi waktu dalam format yang lebih mudah dipahami manusia
 async def _human_time_duration(seconds):
     """Mengonversi detik ke format durasi waktu yang lebih mudah dibaca."""
     if seconds == 0:
