@@ -33,8 +33,8 @@ api_hash = os.getenv("API_HASH")
 bot_token = os.getenv("BOT_TOKEN")
 owner_id = int(os.getenv("OWNER_ID"))  # Owner ID
 delay_time = int(os.getenv("DELAY"))  # Delay time
-DATABASE_FILE = os.getenv("DATABASE_FILE")
-BACKUP_ZIP =  os.getenv("BACKUP_ZIP")
+database_file = os.getenv("DATABASE_FILE")
+backup_zip =  os.getenv("BACKUP_ZIP")
 
 # Initialize bot
 app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
