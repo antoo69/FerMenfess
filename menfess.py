@@ -41,6 +41,26 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 
 admin_data = {}
 
+ef create_database():
+    conn = sqlite3.connect(database_file)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS groups (
+            chat_id INTEGER PRIMARY KEY,
+            admin_id INTEGER
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# Fungsi untuk menambahkan grup baru ke database
+def add_group_to_db(chat_id: int, admin_id: int):
+    conn = sqlite3.connect(database_file)
+    cursor = conn.cursor()
+    cursor.execute("REPLACE INTO groups (chat_id, admin_id) VALUES (?, ?)", (chat_id, admin_id))
+    conn.commit()
+    conn.close()
+
 # Fungsi untuk membuat koneksi database baru
 def get_db_connection():
     return sqlite3.connect(database_file)
