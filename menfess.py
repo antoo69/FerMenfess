@@ -41,7 +41,7 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 
 admin_data = {}
 
-ef create_database():
+def create_database():
     conn = sqlite3.connect(database_file)
     cursor = conn.cursor()
     cursor.execute("""
