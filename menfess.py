@@ -463,8 +463,7 @@ async def on_group_selection(client, callback_query):
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
-            
-try:
+ try:
     # Kirim pesan ke grup/channel
     sent = await original_message.copy(group_data['id'])
 
