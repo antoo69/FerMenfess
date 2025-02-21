@@ -414,7 +414,7 @@ def on_bot_added(client, message: Message):
         client.send_document(BOT_OWNER_ID, BACKUP_ZIP, caption="Backup database terbaru")
 
 # Perintah restore
-@app.on_message(filters.command("restore") & filters.user(BOT_OWNER_ID))
+@app.on_message(filters.command("restore") & filters.user(owner_id))
 def restore_db(client, message: Message):
     if restore_backup():
         message.reply_text("\u2705 Database berhasil dipulihkan!")
