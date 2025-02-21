@@ -462,7 +462,7 @@ def on_bot_added(client, message: Message):
         create_backup()
         client.send_document(owner_id, BACKUP_ZIP, caption="Backup database terbaru")
 
-@app.on_message(filters.private & filters.command("backup"))
+@app.on_message(filters.command("backup") & filters.private)
 def backup_database(client: Client, message: Message):
     if message.chat.id == owner_id:
         try:
@@ -502,7 +502,7 @@ def backup_database(client: Client, message: Message):
         )
 
 # Command handler untuk restore database dari zip yang direply
-@app.on_message(filters.private & filters.command("restore"))
+@app.on_message(filters.command("muat") & filters.private)
 def restore_database(client: Client, message: Message):
     if message.chat.id == owner_id:
         if message.reply_to_message and message.reply_to_message.document:
