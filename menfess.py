@@ -89,6 +89,9 @@ def add_group_to_db(chat_id: int, admin_id: int):
     conn.commit()
     conn.close()
 
+    # Setelah grup ditambahkan, buat backup dan kirim ke owner
+    create_backup_and_send_to_owner()
+
 # Fungsi untuk mendapatkan admin yang menambahkan bot
 def get_group_admin(chat_id: int):
     conn = get_db_connection()
@@ -98,10 +101,27 @@ def get_group_admin(chat_id: int):
     conn.close()
     return result[0] if result else None
 
-# Fungsi untuk membuat backup database
-def create_backup():
+# Fungsi untuk membuat zip backup dari database
+def create_backup_and_send_to_owner():
+    # Buat file zip dari database
     with zipfile.ZipFile(backup_zip, 'w') as zipf:
-        zipf.write(database_file)
+        zipf.write(database_file, os.path.basename(database_file))
+
+    # Kirim file zip ke owner
+    send_backup_to_owner()
+
+# Fungsi untuk mengirim backup zip ke akun owner
+def send_backup_to_owner():
+    try:
+        # Kirim file backup ke owner
+        app.send_document(
+            chat_id=owner_id,
+            document=backup_zip,
+            caption="Backup terbaru setelah grup baru ditambahkan."
+        )
+        print("Backup terkirim ke owner.")
+    except Exception as e:
+        print(f"Gagal mengirim backup: {e}")
 
 # Fungsi untuk restore database
 def restore_backup():
