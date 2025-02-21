@@ -44,12 +44,12 @@ admin_data = {}
 def get_db_connection():
     return sqlite3.connect(database_file)
 
-def handle_new_chat_member(update: Update, context: CallbackContext):
+def handle_new_chat_member(Client: Client, context: CallbackContext):
     """Simpan admin yang menambahkan bot ke grup"""
-    for member in update.message.new_chat_members:
+    for member in message.new_chat_members:
         if member.id == context.bot.id:
-            admin_id = update.message.from_user.id
-            group_id = update.message.chat_id
+            admin_id = client.message.from_user.id
+            group_id = client.message.chat_id
             admin_data[group_id] = admin_id
             context.bot.send_message(
                 chat_id=admin_id,
