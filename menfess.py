@@ -598,6 +598,9 @@ def restore_database(client: Client, message: Message):
             text="Perintah /restore hanya bisa dilakukan oleh owner bot."
         )
 
+from pyrogram import Client, filters
+from pyrogram.types import ChatType, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+
 @app.on_callback_query()
 async def on_group_selection(client: Client, callback_query: CallbackQuery):
     try:
@@ -622,18 +625,11 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
             )
         else:
             # Cek apakah user adalah anggota grup (untuk grup non-channel)
-            try:
-                member = await client.get_chat_member(group_data['id'], user_id)
-                if not member:
-                    await callback_query.message.reply_text(
-                        f"Anda bukan anggota dari grup {group_data['title']} ({group_data['id']}), "
-                        "mohon bergabung ke dalam grup yang ingin Anda kirimkan menfess agar bisa memakai bot ini."
-                    )
-                    return
-            except Exception as e:
-                print(f"Error checking channel membership: {str(e)}")
+            is_member = await is_group_member(client, user_id, group_data['id'])
+            if not is_member:
                 await callback_query.message.reply_text(
-                    f"Terjadi kesalahan saat memeriksa keanggotaan grup {group_data['title']}."
+                    f"Anda bukan anggota dari grup {group_data['title']} ({group_data['id']}), "
+                    "mohon bergabung ke dalam grup yang ingin Anda kirimkan menfess agar bisa memakai bot ini."
                 )
                 return
 
@@ -649,12 +645,19 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
             return
 
         try:
-            # Mengirim menfess ke channel
-            sent = await client.send_message(
-                chat_id=group_data['id'],
-                text=original_message.text if original_message.text else "[Pesan Media]",
-                disable_web_page_preview=True
-            )
+            # Mengirim menfess ke channel atau grup
+            if original_message.media:
+                # Mengirim media (gambar, video, dll.)
+                sent = await original_message.copy(
+                    chat_id=group_data['id']
+                )
+            else:
+                # Mengirim pesan teks biasa
+                sent = await client.send_message(
+                    chat_id=group_data['id'],
+                    text=original_message.text if original_message.text else "[Pesan Media]",
+                    disable_web_page_preview=True
+                )
 
             # Membuat tautan permanen untuk pesan di channel
             chat = await client.get_chat(group_data['id'])
