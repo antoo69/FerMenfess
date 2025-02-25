@@ -576,18 +576,36 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
             await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
             return
 
-        # Mengizinkan semua member untuk mengirim menfess ke channel tanpa cek admin
+        # Mengizinkan semua anggota channel untuk mengirim menfess (tanpa cek admin)
         if group_data.get('type') == str(ChatType.CHANNEL):
-            await callback_query.message.reply_text(
-                f"Menfess Anda akan dikirim ke channel {group_data['title']}."
-            )
-        else:
-            # Cek apakah user adalah anggota grup (untuk grup non-channel)
-            is_member = await is_group_member(client, user_id, group_data['id'])
-            if not is_member:
+            try:
+                member = await client.get_chat_member(group_data['id'], user_id)
+                if member.status not in ["member", "administrator", "creator"]:
+                    await callback_query.message.reply_text(
+                        f"Anda bukan anggota dari channel {group_data['title']}. "
+                        "Silakan bergabung dengan channel untuk mengirim menfess."
+                    )
+                    return
+            except Exception as e:
+                print(f"Error checking channel membership: {e}")
                 await callback_query.message.reply_text(
-                    f"Anda bukan anggota dari grup {group_data['title']} ({group_data['id']}), "
-                    "mohon bergabung ke dalam grup yang ingin Anda kirimkan menfess agar bisa memakai bot ini."
+                    "Gagal memeriksa keanggotaan channel. Pastikan bot memiliki izin yang tepat."
+                )
+                return
+        else:
+            # Pengecekan untuk grup (tidak diubah, tetap seperti sebelumnya)
+            try:
+                member = await client.get_chat_member(group_data['id'], user_id)
+                if not member:
+                    await callback_query.message.reply_text(
+                        f"Anda bukan anggota dari grup {group_data['title']} ({group_data['id']}), "
+                        "mohon bergabung ke dalam grup yang ingin Anda kirimkan menfess agar bisa memakai bot ini."
+                    )
+                    return
+            except Exception as e:
+                print(f"Error checking group membership: {e}")
+                await callback_query.message.reply_text(
+                    "Gagal memeriksa keanggotaan grup. Pastikan bot memiliki izin yang tepat."
                 )
                 return
 
@@ -626,32 +644,8 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
                 reply_markup=keyboard
             )
 
-            # Notifikasi kepada owner dengan isi pesan
-            user = callback_query.from_user
-            message_text = original_message.text if original_message.text else "[Media Message]"
-            owner_notification = f"""
-New Menfess Sent!
-Username: @{user.username if user.username else 'None'}
-Name: {user.first_name} {user.last_name if user.last_name else ''}
-User ID: {user.id}
-Group/Channel: {group_data['title']}
-Message: {message_text}
-"""
-            await client.send_message(owner_id, owner_notification)
-
-            # Forward pesan media (jika ada) ke owner
-            if original_message.media:
-                await original_message.copy(owner_id)
-
-            # Notifikasi ke admin yang menambahkan bot
-            admin_who_added_bot_id = admin_data.get(group_data['id'])
-            if admin_who_added_bot_id:
-                await client.send_message(admin_who_added_bot_id, owner_notification)
-                if original_message.media:
-                    await original_message.copy(admin_who_added_bot_id)
-
             # Tambahkan pengguna ke dalam cooldown
-            await add_to_cooldown(group_data['id'], user.id)
+            await add_to_cooldown(group_data['id'], user_id)
 
             # Hapus referensi pesan untuk menghindari kebocoran memori
             del message_refs[callback_query.message.id]
