@@ -453,7 +453,7 @@ async def ping_pong(client: Client, message: Message):
     )
 
 
-@app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
+@app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast", "backup", "muat"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
     user_ids.add(user_id)
@@ -510,7 +510,7 @@ def on_bot_added(client, message: Message):
         chat_id = message.chat.id
         add_group_to_db(chat_id, admin_id)
         create_backup()
-        client.send_document(owner_id, BACKUP_ZIP, caption="Backup database terbaru")
+        client.send_document(owner_id, backup_zip, caption="Backup database terbaru")
 
 @app.on_message(filters.command("backup") & filters.private)
 def backup_database(client: Client, message: Message):
@@ -704,14 +704,3 @@ Message: {message_text}
 
         except Exception as e:
             print(f"Error sending menfess: {str(e)}")
-            await callback_query.message.reply_text(
-                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
-            )
-        finally:
-            print("Proses menfess selesai.")
-
-    except Exception as e:
-        print(f"Error in on_group_selection: {str(e)}")
-
-print("\n\nBOT TELAH AKTIF!!!")
-app.run()
