@@ -598,9 +598,6 @@ def restore_database(client: Client, message: Message):
             text="Perintah /restore hanya bisa dilakukan oleh owner bot."
         )
 
-from pyrogram import Client, filters
-from pyrogram.types import ChatType, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-
 @app.on_callback_query()
 async def on_group_selection(client: Client, callback_query: CallbackQuery):
     try:
