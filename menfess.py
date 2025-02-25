@@ -615,7 +615,7 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
             await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
             return
 
-        # Mengizinkan semua anggota channel untuk mengirim menfess (tanpa cek admin)
+        # Mengizinkan semua anggota channel untuk mengirim menfess
         if group_data.get('type') == str(ChatType.CHANNEL):
             try:
                 member = await client.get_chat_member(group_data['id'], user_id)
@@ -626,13 +626,13 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
                     )
                     return
             except Exception as e:
-                print(f"Error checking channel membership: {e}")
+                print(f"Error checking channel membership (chat_id: {group_data['id']}, user_id: {user_id}): {e}")
                 await callback_query.message.reply_text(
                     "Gagal memeriksa keanggotaan channel. Pastikan bot memiliki izin yang tepat."
                 )
                 return
         else:
-            # Pengecekan untuk grup (tidak diubah, tetap seperti sebelumnya)
+            # Pengecekan untuk grup (tetap seperti sebelumnya)
             try:
                 member = await client.get_chat_member(group_data['id'], user_id)
                 if not member:
