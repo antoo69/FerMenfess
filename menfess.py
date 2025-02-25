@@ -57,7 +57,7 @@ def create_database():
         )
     """)
     conn.commit()
-    conn.close())
+    conn.close()
 
 def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_type: str):
     conn = get_db_connection()
