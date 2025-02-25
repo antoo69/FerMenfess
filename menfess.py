@@ -232,11 +232,17 @@ async def is_group_member(client, user_id, chat_id):
     except:
         return False
 
-async def is_channel_admin(client, user_id, chat_id):
+async def is_channel_member(client, user_id, chat_id):
     try:
         member = await client.get_chat_member(chat_id, user_id)
-        return member.status in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]
-    except:
+        # Mengizinkan semua member, termasuk administrator, owner, dan member biasa
+        return member.status in [
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.MEMBER
+        ]
+    except Exception as e:
+        print(f"Error checking channel membership: {e}")
         return False
 
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
