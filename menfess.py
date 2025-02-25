@@ -437,38 +437,56 @@ async def ping_pong(client: Client, message: Message):
         f"**• Uptime -** `{uptime}`"
     )
 
+
 @app.on_message(filters.private & ~filters.command(["start", "ping", "broadcast"]))
 async def handle_private_message(client, message):
     user_id = message.from_user.id
     user_ids.add(user_id)
-    
-    # Create buttons for groups where user is a member
+
     buttons = []
     for group_id, group_data in menfess_groups.items():
-        # For channels, check if user is admin
+        # Untuk CHANNEL, izinkan SEMUA MEMBER untuk mengirim menfess
         if group_data.get('type') == str(ChatType.CHANNEL):
-            if await is_channel_admin(client, user_id, group_data['id']):
+            is_member = await is_channel_member(client, user_id, group_data['id'])
+            if is_member:
                 buttons.append([InlineKeyboardButton(
-                    f"💌 Kirim Menfess ke {group_data['title']}", 
+                    f"💌 Kirim Menfess ke {group_data['title']}",
                     callback_data=f"send_menfess_{group_id}"
                 )])
-        # For groups, check if user is member
+        # Untuk GROUP, tetap cek apakah user adalah member
         else:
             if await is_group_member(client, user_id, group_data['id']):
                 buttons.append([InlineKeyboardButton(
-                    f"💌 Kirim Menfess ke {group_data['title']}", 
+                    f"💌 Kirim Menfess ke {group_data['title']}",
                     callback_data=f"send_menfess_{group_id}"
                 )])
-    
+
     if not buttons:
-        await message.reply_text("Anda tidak mempunyai group yang sama dengan bot ini\ntolong tambahkan bot ini kedalam group anda\nagar anda bisa mengirim menfess")
+        await message.reply_text(
+            "Anda tidak mempunyai group atau channel yang sama dengan bot ini.\n"
+            "Tambahkan bot ini ke dalam group/channel Anda agar bisa mengirim menfess."
+        )
         return
-        
+
     keyboard = InlineKeyboardMarkup(buttons)
-    
-    # Store the original message reference
+
+    # Simpan referensi pesan asli
     msg = await message.reply_text("Pilih grup/channel tujuan menfess:", reply_markup=keyboard)
     message_refs[msg.id] = message
+
+
+async def is_channel_member(client, user_id, chat_id):
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        # Mengizinkan semua anggota (owner, admin, dan member biasa)
+        return member.status in [
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.MEMBER
+        ]
+    except Exception as e:
+        print(f"Error checking channel membership: {e}")
+        return False
 
 @app.on_chat_member_updated()
 def on_bot_added(client, message: Message):
