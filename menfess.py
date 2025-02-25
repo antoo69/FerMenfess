@@ -555,8 +555,9 @@ def restore_database(client: Client, message: Message):
             chat_id=message.chat.id,
             text="Perintah /restore hanya bisa dilakukan oleh owner bot."
         )
+
 @app.on_callback_query()
-async def on_group_selection(client, callback_query):
+async def on_group_selection(client, callback_query: CallbackQuery):
     try:
         user_id = callback_query.from_user.id
         data = callback_query.data
@@ -572,21 +573,17 @@ async def on_group_selection(client, callback_query):
             await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
             return
 
-        # Check permissions based on chat type
+        # Mengizinkan semua member untuk mengirim menfess ke channel tanpa cek admin
         if group_data.get('type') == str(ChatType.CHANNEL):
-            is_authorized = await is_channel_admin(client, user_id, group_data['id'])
-            if not is_authorized:
-                await callback_query.message.reply_text(
-                    f"Anda bukan admin dari channel {group_data['title']}. "
-                    "Hanya admin yang dapat mengirim menfess ke channel."
-                )
-                return
+            await callback_query.message.reply_text(
+                f"Menfess Anda akan dikirim ke channel {group_data['title']}."
+            )
         else:
             is_member = await is_group_member(client, user_id, group_data['id'])
             if not is_member:
                 await callback_query.message.reply_text(
-                    f"Anda bukan anggota dari group {group_data['title']} ({group_data['id']}), "
-                    "mohon bergabung ke dalam group yang ingin anda kirimkan menfes agar bisa memakai bot ini"
+                    f"Anda bukan anggota dari grup {group_data['title']} ({group_data['id']}), "
+                    "mohon bergabung ke dalam grup yang ingin Anda kirimkan menfess agar bisa memakai bot ini."
                 )
                 return
 
@@ -662,7 +659,6 @@ Message: {message_text}
                 "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
             )
         finally:
-            # Ini adalah bagian yang akan dijalankan setelah try-except, bahkan jika ada error
             print("Proses menfess selesai.")
 
     except Exception as e:
