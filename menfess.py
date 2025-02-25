@@ -704,3 +704,14 @@ Message: {message_text}
 
         except Exception as e:
             print(f"Error sending menfess: {str(e)}")
+            await callback_query.message.reply_text(
+                "Gagal mengirim menfess. Pastikan bot sudah menjadi admin di grup/channel yang dipilih."
+            )
+        finally:
+            print("Proses menfess selesai.")
+
+    except Exception as e:
+        print(f"Error in on_group_selection: {str(e)}")
+
+print("\n\nBOT TELAH AKTIF!!!")
+app.run()
