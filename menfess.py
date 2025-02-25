@@ -11,6 +11,9 @@ from pyrogram.enums import ChatType, ChatMemberStatus
 import time
 from time import time
 from datetime import datetime, timedelta
+from pyrogram import Client, filters
+from pyrogram.types import ChatType, CallbackQuery
+
 
 load_dotenv()
 # Waktu mulai bot dalam UTC dan WIB
