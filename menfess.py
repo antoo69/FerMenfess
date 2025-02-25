@@ -560,7 +560,7 @@ def restore_database(client: Client, message: Message):
         )
 
 @app.on_callback_query()
-async def on_group_selection(client, callback_query: CallbackQuery):
+async def on_group_selection(client: Client, callback_query: CallbackQuery):
     try:
         user_id = callback_query.from_user.id
         data = callback_query.data
@@ -570,7 +570,7 @@ async def on_group_selection(client, callback_query: CallbackQuery):
 
         group_id = data.replace("send_menfess_", "")
 
-        # Check if group/channel exists
+        # Cek apakah grup/channel valid
         group_data = menfess_groups.get(group_id)
         if not group_data:
             await callback_query.message.reply_text("Grup/Channel tidak valid. Silakan coba lagi.")
@@ -582,6 +582,7 @@ async def on_group_selection(client, callback_query: CallbackQuery):
                 f"Menfess Anda akan dikirim ke channel {group_data['title']}."
             )
         else:
+            # Cek apakah user adalah anggota grup (untuk grup non-channel)
             is_member = await is_group_member(client, user_id, group_data['id'])
             if not is_member:
                 await callback_query.message.reply_text(
@@ -590,22 +591,26 @@ async def on_group_selection(client, callback_query: CallbackQuery):
                 )
                 return
 
-        # Check if user is in cooldown
+        # Cek cooldown pengguna
         if group_id in cooldown_users and user_id in cooldown_users[group_id]:
             await callback_query.message.reply_text(f"Mohon tunggu {delay_time} detik sebelum mengirim menfess lagi.")
             return
 
-        # Get the original message
+        # Ambil pesan asli
         original_message = message_refs.get(callback_query.message.id)
         if not original_message:
             await callback_query.message.reply_text("Pesan tidak ditemukan. Silakan coba lagi.")
             return
 
         try:
-            # Kirim pesan ke grup/channel
-            sent = await original_message.copy(group_data['id'])
+            # Mengirim menfess ke channel
+            sent = await client.send_message(
+                chat_id=group_data['id'],
+                text=original_message.text if original_message.text else "[Pesan Media]",
+                disable_web_page_preview=True
+            )
 
-            # Buat link pesan permanen
+            # Membuat tautan permanen untuk pesan di channel
             chat = await client.get_chat(group_data['id'])
             if chat.username:
                 post_link = f"https://t.me/{chat.username}/{sent.id}"
@@ -621,7 +626,7 @@ async def on_group_selection(client, callback_query: CallbackQuery):
                 reply_markup=keyboard
             )
 
-            # Kirim notifikasi kepada owner dengan isi pesan
+            # Notifikasi kepada owner dengan isi pesan
             user = callback_query.from_user
             message_text = original_message.text if original_message.text else "[Media Message]"
             owner_notification = f"""
@@ -634,26 +639,21 @@ Message: {message_text}
 """
             await client.send_message(owner_id, owner_notification)
 
-            # Jika pesan asli mengandung media, forward ke owner bot
+            # Forward pesan media (jika ada) ke owner
             if original_message.media:
                 await original_message.copy(owner_id)
 
-            # Kirim notifikasi ke admin yang menambahkan bot
-            group_id = group_data['id']
-            admin_who_added_bot_id = admin_data.get(group_id)
+            # Notifikasi ke admin yang menambahkan bot
+            admin_who_added_bot_id = admin_data.get(group_data['id'])
             if admin_who_added_bot_id:
                 await client.send_message(admin_who_added_bot_id, owner_notification)
-
-                # Jika pesan berisi media, kirim juga ke admin
                 if original_message.media:
                     await original_message.copy(admin_who_added_bot_id)
-            else:
-                print(f"Admin yang menambahkan bot tidak ditemukan untuk grup {group_id}")
 
-            # Tambahkan pengguna ke cooldown
-            await add_to_cooldown(group_id, user.id)
+            # Tambahkan pengguna ke dalam cooldown
+            await add_to_cooldown(group_data['id'], user.id)
 
-            # Bersihkan referensi pesan
+            # Hapus referensi pesan untuk menghindari kebocoran memori
             del message_refs[callback_query.message.id]
 
         except Exception as e:
