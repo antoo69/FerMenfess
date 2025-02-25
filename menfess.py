@@ -12,7 +12,7 @@ import time
 from time import time
 from datetime import datetime, timedelta
 from pyrogram import Client, filters
-from pyrogram.types import ChatType, CallbackQuery
+from pyrogram.types import CallbackQuery
 
 
 load_dotenv()
