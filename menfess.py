@@ -245,6 +245,21 @@ async def is_channel_member(client, user_id, chat_id):
         print(f"Error checking channel membership: {e}")
         return False
 
+async def is_channel_member(client, user_id, chat_id):
+    try:
+        # Pastikan bot menjadi admin di channel
+        member = await client.get_chat_member(chat_id, user_id)
+        # Mengizinkan semua anggota (owner, admin, dan member biasa)
+        return member.status in [
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+            ChatMemberStatus.MEMBER
+        ]
+    except Exception as e:
+        print(f"Error checking channel membership (chat_id: {chat_id}, user_id: {user_id}): {e}")
+        return False
+
+
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 @app.on_chat_member_updated()
