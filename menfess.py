@@ -70,27 +70,20 @@ def add_group_to_db(chat_id, admin_id, title, link, chat_type):
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS groups (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                chat_id INTEGER UNIQUE,
-                admin_id INTEGER,
-                title TEXT,
-                link TEXT,
-                chat_type TEXT
-            )
-        """)
+        # Pastikan `link` tidak None, jika None, ubah ke string kosong ""
+        if link is None:
+            link = ""
 
         cursor.execute("""
-            INSERT OR IGNORE INTO groups (chat_id, admin_id, title, link, chat_type)
+            INSERT OR REPLACE INTO groups (chat_id, admin_id, title, link, type) 
             VALUES (?, ?, ?, ?, ?)
         """, (chat_id, admin_id, title, link, chat_type))
 
         conn.commit()
         conn.close()
-        print(f"✅ Grup '{title}' berhasil disimpan di database.")
+        print(f"✅ Grup {title} berhasil ditambahkan ke database.")
     except sqlite3.Error as e:
-        print(f"❌ Error saat menambahkan grup ke database: {e}")
+        print(f"❌ Error SQLite: {e}")
 
     # Setelah grup ditambahkan, buat backup dan kirim ke owner
     create_backup_and_send_to_owner()
