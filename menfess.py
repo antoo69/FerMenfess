@@ -179,13 +179,10 @@ def handle_new_chat_member(client: Client, message):
         # Tambahkan grup ke database
         add_group_to_db(chat_id, admin_id, title, link, chat_type)
 
-        # Kirim backup database ke owner
-        create_backup_and_send_to_owner(client)
-
     except Exception as e:
         print(f"❌ Error di handle_new_chat_member: {e}")
             # Kirim file backup ke owner
-            create_backup_and_send_to_owner(client)
+        create_backup_and_send_to_owner(client)
 
 # Jalankan pembuatan database saat pertama kali
 create_database()
