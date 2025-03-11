@@ -44,8 +44,12 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 
 admin_data = {}
 
+def get_db_connection():
+    return sqlite3.connect(DATABASE_FILE)
+
+# Fungsi untuk membuat database jika belum ada
 def create_database():
-    conn = sqlite3.connect(database_file)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS groups (
@@ -59,7 +63,8 @@ def create_database():
     conn.commit()
     conn.close()
 
-def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_type: str):
+# Fungsi untuk menambahkan grup ke database
+def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_type: str, app: Client):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -70,78 +75,9 @@ def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_typ
     conn.close()
 
     # Setelah grup ditambahkan, buat backup dan kirim ke owner
-    create_backup_and_send_to_owner()
+    create_backup_and_send_to_owner(app)
 
-def get_db_connection():
-    return sqlite3.connect(database_file)
-
-# Fungsi untuk menambahkan grup ke database
-def add_group_to_db(chat_id: int, admin_id: int):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("REPLACE INTO groups (chat_id, admin_id) VALUES (?, ?)", (chat_id, admin_id))
-    conn.commit()
-    conn.close()
-
-# Fungsi untuk mendapatkan admin yang menambahkan bot
-def get_group_admin(chat_id: int):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT admin_id FROM groups WHERE chat_id = ?", (chat_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
-
-def create_backup_and_send_to_owner():
-    try:
-        # Buat file zip dari database
-        with zipfile.ZipFile(backup_zip, 'w') as zipf:
-            zipf.write(database_file, os.path.basename(database_file))
-        
-        # Kirim file backup ke owner
-        app.send_document(
-            chat_id=owner_id,
-            document=backup_zip,
-            caption="Database backup terbaru setelah perubahan grup"
-        )
-        
-        print("Backup berhasil dibuat dan dikirim ke owner")
-        
-    except Exception as e:
-        print(f"Error saat membuat/mengirim backup: {e}")
-
-# Panggil fungsi ini ketika bot ditambahkan ke grup baru
-def handle_new_chat_member(client, message):
-    for member in message.new_chat_members:
-        if member.id == client.me.id:
-            admin_id = message.from_user.id
-            group_id = message.chat.id
-
-            # Simpan admin dan grup ke database
-            add_group_to_db(group_id, admin_id)
-            
-            # Buat backup
-            zip_file = create_backup()
-
-            # Kirim file backup ke owner
-            send_backup_to_owner(zip_file)
-
-def restore_backup():
-    try:
-        if os.path.exists(backup_zip):
-            with zipfile.ZipFile(backup_zip, 'r') as zipf:
-                zipf.extract(os.path.basename(database_file))
-            print("Database berhasil di-restore")
-            return True
-        else:
-            print("File backup tidak ditemukan")
-            return False
-    except Exception as e:
-        print(f"Error saat restore: {e}")
-        return False
-
-create_database()
-
+# Fungsi untuk mendapatkan semua grup yang tersimpan di database
 def get_all_groups():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -151,7 +87,7 @@ def get_all_groups():
     return groups
 
 # Fungsi untuk menghapus grup dari database
-def remove_group_from_db(chat_id: int):
+def remove_group_from_db(chat_id: int, app: Client):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM groups WHERE chat_id = ?", (chat_id,))
@@ -159,7 +95,75 @@ def remove_group_from_db(chat_id: int):
     conn.close()
     
     # Setelah grup dihapus, buat backup baru
-    create_backup_and_send_to_owner()
+    create_backup_and_send_to_owner(app)
+
+# Fungsi untuk membuat backup database dalam format ZIP
+def create_backup():
+    try:
+        with zipfile.ZipFile(BACKUP_ZIP, 'w') as zipf:
+            zipf.write(DATABASE_FILE, os.path.basename(DATABASE_FILE))
+        print("Backup berhasil dibuat.")
+        return BACKUP_ZIP
+    except Exception as e:
+        print(f"Error saat membuat backup: {e}")
+        return None
+
+# Fungsi untuk mengirim backup database ke owner
+def create_backup_and_send_to_owner(app: Client):
+    try:
+        zip_file = create_backup()
+        if zip_file:
+            app.send_document(
+                chat_id=OWNER_ID,
+                document=zip_file,
+                caption="📂 Database backup terbaru setelah perubahan grup."
+            )
+            print("Backup berhasil dikirim ke owner.")
+    except Exception as e:
+        print(f"Error saat mengirim backup: {e}")
+
+# Fungsi untuk merestore database dari backup ZIP
+def restore_backup():
+    try:
+        if os.path.exists(BACKUP_ZIP):
+            with zipfile.ZipFile(BACKUP_ZIP, 'r') as zipf:
+                zipf.extract(os.path.basename(DATABASE_FILE))
+            print("✅ Database berhasil di-restore dari backup.")
+            return True
+        else:
+            print("❌ File backup tidak ditemukan.")
+            return False
+    except Exception as e:
+        print(f"Error saat restore database: {e}")
+        return False
+
+# Fungsi untuk menangani saat bot masuk ke grup baru
+async def handle_new_chat_member(client: Client, message):
+    for member in message.new_chat_members:
+        if member.id == client.me.id:
+            admin_id = message.from_user.id
+            chat_id = message.chat.id
+            title = message.chat.title
+            link = message.chat.username if message.chat.username else "No Link"
+            chat_type = message.chat.type
+
+            # Simpan grup ke database
+            add_group_to_db(chat_id, admin_id, title, link, chat_type, client)
+
+            # Kirim file backup ke owner
+            create_backup_and_send_to_owner(client)
+
+# Jalankan pembuatan database saat pertama kali
+create_database()
+
+# Fungsi untuk mendapatkan admin yang menambahkan bot
+def get_group_admin(chat_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT admin_id FROM groups WHERE chat_id = ?", (chat_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
 
 # Fungsi untuk menghitung durasi waktu dalam format yang lebih mudah dipahami manusia
 async def _human_time_duration(seconds):
