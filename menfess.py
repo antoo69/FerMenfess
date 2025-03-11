@@ -65,18 +65,24 @@ def create_database():
     conn.close()
 
 # Fungsi untuk menambahkan grup ke database
-def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_type: str, app: Client):
+def add_group_to_db(chat_id: int, admin_id: int, title: str, link: str, chat_type: str):
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    print(f"Menambahkan grup: {chat_id}, Admin: {admin_id}, Nama: {title}")  # Debugging
+    
     cursor.execute("""
         REPLACE INTO groups (chat_id, admin_id, title, link, type) 
         VALUES (?, ?, ?, ?, ?)
     """, (chat_id, admin_id, title, link, chat_type))
+    
     conn.commit()
     conn.close()
 
+    print("Grup berhasil ditambahkan ke database")  # Debugging
+
     # Setelah grup ditambahkan, buat backup dan kirim ke owner
-    create_backup_and_send_to_owner(app)
+    create_backup_and_send_to_owner()
 
 # Fungsi untuk mendapatkan semua grup yang tersimpan di database
 def get_all_groups():
@@ -139,17 +145,19 @@ def restore_backup():
         return False
 
 # Fungsi untuk menangani saat bot masuk ke grup baru
-async def handle_new_chat_member(client: Client, message):
+@app.on_message(filters.new_chat_members)
+def handle_new_chat_member(client, message):
     for member in message.new_chat_members:
         if member.id == client.me.id:
-            admin_id = message.from_user.id
             chat_id = message.chat.id
+            admin_id = message.from_user.id
             title = message.chat.title
-            link = message.chat.username if message.chat.username else "No Link"
+            link = None  # Link grup tidak selalu tersedia
             chat_type = message.chat.type
 
-            # Simpan grup ke database
-            add_group_to_db(chat_id, admin_id, title, link, chat_type, client)
+            print(f"Bot masuk ke grup: {title} ({chat_id})")  # Debugging
+
+            add_group_to_db(chat_id, admin_id, title, link, chat_type)
 
             # Kirim file backup ke owner
             create_backup_and_send_to_owner(client)
