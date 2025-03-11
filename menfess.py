@@ -15,6 +15,7 @@ from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery
 
 
+
 load_dotenv()
 # Waktu mulai bot dalam UTC dan WIB
 START_TIME_UTC = datetime.utcnow()
@@ -45,7 +46,7 @@ app = Client("menfess_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_toke
 admin_data = {}
 
 def get_db_connection():
-    return sqlite3.connect(DATABASE_FILE)
+    return sqlite3.connect(database_file)
 
 # Fungsi untuk membuat database jika belum ada
 def create_database():
