@@ -112,32 +112,24 @@ def remove_group_from_db(chat_id: int, app: Client):
 # Fungsi untuk membuat backup database dalam format ZIP
 def create_backup():
     try:
-        if not os.path.exists(DATABASE_FILE):
-            print(f"❌ Database {DATABASE_FILE} tidak ditemukan.")
-            return None
-
         with zipfile.ZipFile(BACKUP_ZIP, 'w') as zipf:
             zipf.write(DATABASE_FILE, os.path.basename(DATABASE_FILE))
-        
-        print("✅ Backup berhasil dibuat:", BACKUP_ZIP)
+        print("✅ Backup berhasil dibuat.")
         return BACKUP_ZIP
     except Exception as e:
         print(f"❌ Error saat membuat backup: {e}")
         return None
 
-# 🔹 Fungsi untuk mengirim backup database ke owner
 def create_backup_and_send_to_owner(app: Client):
     try:
         zip_file = create_backup()
-        if zip_file and os.path.exists(zip_file):
+        if zip_file:
             app.send_document(
                 chat_id=OWNER_ID,
                 document=zip_file,
                 caption="📂 Database backup terbaru setelah perubahan grup."
             )
             print("✅ Backup berhasil dikirim ke owner.")
-        else:
-            print("❌ Gagal mengirim backup, file tidak ditemukan.")
     except Exception as e:
         print(f"❌ Error saat mengirim backup: {e}")
 
@@ -157,26 +149,19 @@ def restore_backup():
         print(f"Error saat restore database: {e}")
         return False
 
-def handle_new_chat_member(client: Client, message):
-    try:
-        chat_id = message.chat.id
-        title = message.chat.title
-        chat_type = message.chat.type
-        admin_id = message.from_user.id if message.from_user else None
+@app.on_message(filters.new_chat_members)
+def handle_new_chat_member(client, message):
+    chat = message.chat
+    chat_id = chat.id
+    admin_id = message.from_user.id  # ID admin yang memasukkan bot
+    title = chat.title
+    link = chat.invite_link  # Bisa None, kita sudah handle ini di add_group_to_db
+    chat_type = chat.type  # Grup / Supergrup
 
-        # Coba dapatkan link grup (jika ada)
-        link = message.chat.invite_link if hasattr(message.chat, "invite_link") else ""
+    add_group_to_db(chat_id, admin_id, title, link, chat_type)
 
-        print(f"➕ Bot masuk ke grup: {title} (ID: {chat_id}), Admin: {admin_id}")
-
-        # Tambahkan grup ke database
-        add_group_to_db(chat_id, admin_id, title, link, chat_type)
-
-    except Exception as e:
-        print(f"❌ Error di handle_new_chat_member: {e}")
-            # Kirim file backup ke owner
-        create_backup_and_send_to_owner(client)
-
+    # Buat backup dan kirim ke owner
+    create_backup_and_send_to_owner(client)
 # Jalankan pembuatan database saat pertama kali
 create_database()
 
