@@ -67,7 +67,7 @@ def create_database():
 # Fungsi untuk menambahkan grup ke database
 def add_group_to_db(chat_id, admin_id, title, link, chat_type):
     try:
-        conn = sqlite3.connect(DATABASE_FILE)
+        conn = sqlite3.connect(database_file)
         cursor = conn.cursor()
 
         # Pastikan `link` tidak None, jika None, ubah ke string kosong ""
@@ -113,7 +113,7 @@ def remove_group_from_db(chat_id: int, app: Client):
 def create_backup():
     try:
         with zipfile.ZipFile(BACKUP_ZIP, 'w') as zipf:
-            zipf.write(DATABASE_FILE, os.path.basename(DATABASE_FILE))
+            zipf.write(database_file, os.path.basename(database_file))
         print("✅ Backup berhasil dibuat.")
         return BACKUP_ZIP
     except Exception as e:
@@ -139,7 +139,7 @@ def restore_backup():
     try:
         if os.path.exists(BACKUP_ZIP):
             with zipfile.ZipFile(BACKUP_ZIP, 'r') as zipf:
-                zipf.extract(os.path.basename(DATABASE_FILE))
+                zipf.extract(os.path.basename(database_file))
             print("✅ Database berhasil di-restore dari backup.")
             return True
         else:
@@ -352,7 +352,7 @@ async def handle_chat_member_updated(client, chat_member_updated):
 """
             group_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("📝 Kirim Pesan Anonim", url="https://t.me/testmenfes_bot")],
-                [InlineKeyboardButton("🛒 Store", url="https://t.me/Galerifsyrl")]
+                [InlineKeyboardButton("🛒 Store", url="https://t.me/FerdiStore")]
             ])
 
             await client.send_message(chat.id, welcome_message, reply_markup=group_keyboard)
@@ -703,7 +703,7 @@ async def on_group_selection(client: Client, callback_query: CallbackQuery):
             owner_notification = f"""
 New Menfess Sent!
 Username: @{user.username if user.username else 'None'}
-Name: {user.first_name} {user.last_name if user.last_name else ''}
+Name: <a href="tg://user?id={user.id}">{user.first_name} {user.last_name if user.last_name else ''}</a>
 User ID: {user.id}
 Group/Channel: {group_data['title']}
 Message: {message_text}
