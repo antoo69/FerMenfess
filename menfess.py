@@ -65,7 +65,7 @@ def create_database():
     conn.close()
 
 # Fungsi untuk menambahkan grup ke database
-def add_group_to_db(chat_id, admin_id, title, link, chat_type, app: Client):
+def add_group_to_db(chat_id, admin_id, title, link, chat_type, app):
     try:
         conn = sqlite3.connect(database_file)
         cursor = conn.cursor()
@@ -150,21 +150,16 @@ def restore_backup():
         print(f"Error saat restore database: {e}")
         return False
 
-@app.on_message(filters.new_chat_members)
+@Client.on_message(filters.new_chat_members)
 def handle_new_chat_member(client, message):
-    chat = message.chat
-    chat_id = chat.id
-    admin_id = message.from_user.id  # ID admin yang memasukkan bot
-    title = chat.title
-    link = chat.invite_link  # Bisa None, kita sudah handle ini di add_group_to_db
-    chat_type = chat.type  # Grup / Supergrup
+    chat_id = message.chat.id
+    admin_id = message.from_user.id if message.from_user else 0
+    title = message.chat.title
+    link = None  # kalau kamu ambil link, tambahkan logikanya
+    chat_type = message.chat.type
 
-    add_group_to_db(chat_id, admin_id, title, link, chat_type)
-
-    # Buat backup dan kirim ke owner
-    create_backup_and_send_to_owner(client)
-# Jalankan pembuatan database saat pertama kali
-create_database()
+    # Kirim data ke DB dan backup
+    add_group_to_db(chat_id, admin_id, title, link, chat_type, client)
 
 # Fungsi untuk mendapatkan admin yang menambahkan bot
 def get_group_admin(chat_id: int):
