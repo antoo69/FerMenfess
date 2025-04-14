@@ -65,12 +65,12 @@ def create_database():
     conn.close()
 
 # Fungsi untuk menambahkan grup ke database
-def add_group_to_db(chat_id, admin_id, title, link, chat_type):
+def add_group_to_db(chat_id, admin_id, title, link, chat_type, app: Client):
     try:
         conn = sqlite3.connect(database_file)
         cursor = conn.cursor()
 
-        # Pastikan `link` tidak None, jika None, ubah ke string kosong ""
+        # Pastikan `link` tidak None
         if link is None:
             link = ""
 
@@ -85,8 +85,9 @@ def add_group_to_db(chat_id, admin_id, title, link, chat_type):
     except sqlite3.Error as e:
         print(f"❌ Error SQLite: {e}")
 
-    # Setelah grup ditambahkan, buat backup dan kirim ke owner
-    create_backup_and_send_to_owner()
+    # Kirim backup ke owner setelah menambahkan grup
+    create_backup_and_send_to_owner(app)
+
 
 
 # Fungsi untuk mendapatkan semua grup yang tersimpan di database
