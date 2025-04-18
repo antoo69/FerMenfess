@@ -187,7 +187,7 @@ cooldown_users = {}  # Dict to store cooldown users per group
 menfess_groups = {}  # Store group IDs and links
 user_ids = set()  # Store user IDs for broadcast
 start_message = start_message = '''
-Selamat Datang Di **Ferdi Menfes Bot**
+<blockquote>Selamat Datang Di **Ferdi Menfes Bot**
 
 🔰 Cara Penggunaan Bot:
 • Tambahkan bot ini ke grup/channel Anda
@@ -209,7 +209,7 @@ Selamat Datang Di **Ferdi Menfes Bot**
 
 • Info bot lain bisa kunjungi @Galerifsyrl
 
-Silakan mulai mengirim pesan menfess Anda!
+Silakan mulai mengirim pesan menfess Anda!</blockquote>
 '''
 
 
@@ -334,7 +334,7 @@ async def handle_chat_member_updated(client, chat_member_updated):
             await client.send_message(owner_id, owner_message, reply_markup=owner_keyboard)
 
             # Kirim pesan sambutan ke grup dengan button
-            welcome_message = f"""
+            welcome_message = f"""<blockquote>
 📢 **Halo, Saya Bot Menfes Multi Group !** 📢
 🔹 Saya bisa membantu Anda mengirim pesan anonim ke beberapa grup sekaligus.
 🔹 **Cara Penggunaan:**
@@ -345,7 +345,7 @@ async def handle_chat_member_updated(client, chat_member_updated):
 🔹Info bot lain silahkan kunjungi Store Kami
 
 🚀 **Tambahkan saya ke lebih banyak grup untuk menikmati fitur multi-group!**
-"""
+</blockquote>"""
             group_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("📝 Kirim Pesan Anonim", url="https://t.me/testmenfes_bot")],
                 [InlineKeyboardButton("🛒 Store", url="https://t.me/FerdiStore")]
@@ -499,8 +499,8 @@ async def handle_private_message(client, message):
 
     if not buttons:
         await message.reply_text(
-            "Anda tidak mempunyai group atau channel yang sama dengan bot ini.\n"
-            "Tambahkan bot ini ke dalam group/channel Anda agar bisa mengirim menfess."
+            "<b>Anda tidak mempunyai group atau channel yang sama dengan bot ini.\n"
+            "Tambahkan bot ini ke dalam group/channel Anda agar bisa mengirim menfess</b>"
         )
         return
 
